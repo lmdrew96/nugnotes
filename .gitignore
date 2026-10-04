@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Legacy
+.next/
+out/
+release/
+
+# Build outputs
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+coverage/
+
+# Misc
+*.local
+.vercel
+next-env.d.ts
+
+# Agent Instructions
+copilot-instructions.md
+
+# Personal easter egg cheat sheet (kept local)
+docs/EASTER-EGGS.md

@@ -1,0 +1,473 @@
+/**
+ * Study Tools — AI-powered study tool generation + CRUD
+ * Each tool generates structured JSON output from session transcript/notes.
+ */
+
+import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
+import { type ActionCtx, action, internalMutation, mutation, query } from './_generated/server';
+import { callClaude as callClaudeShared } from './config';
+import {
+  buildInput,
+  getConceptMapPrompt,
+  getEli5Prompt,
+  getFlashcardPrompt,
+  getKeyConceptsPrompt,
+  getQuizPrompt,
+  getSummaryPrompt,
+} from './studyToolPrompts';
+
+import { api, internal } from './_generated/api';
+import { requireAuth } from './authHelpers';
+import type { LectureType } from './prompts';
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+/**
+ * Loads a session and the text a study tool works from (its documentText).
+ * The read runs as the caller, so a session that isn't theirs comes back as
+ * not found.
+ */
+async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
+  const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
+  if (!session) throw new Error('Session not found');
+  const sessionContent = session.documentText;
+  if (!sessionContent) throw new Error('No document text available');
+  return { session, lecture: buildInput(sessionContent, session.notesPlainText) };
+}
+
+/** Strip markdown code fences that Claude sometimes wraps JSON in */
+export function extractJson(text: string): string {
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) return fenceMatch[1].trim();
+  return text.trim();
+}
+
+/**
+ * Call Claude with a session's lecture material as a cached system block and
+ * the tool's instruction after it.
+ *
+ * The lecture comes first and is identical for every tool on a session, so
+ * running flashcards, then a quiz, then a concept map reads it from cache after
+ * the first. Below Haiku's 4096-token minimum the breakpoint silently does
+ * nothing — no write, no extra cost — so short sessions simply don't cache.
+ */
+export const callClaudeWithLecture = (
+  lecture: string,
+  instruction: string,
+  maxTokens: number,
+  temperature: number,
+): Promise<string> =>
+  callClaudeShared({
+    maxTokens,
+    temperature,
+    system: [
+      {
+        type: 'text',
+        text: `LECTURE MATERIAL:\n\n${lecture}`,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages: [{ role: 'user', content: instruction }],
+    onUsage: (usage) =>
+      console.log(
+        `[studyTools] input=${usage.input_tokens} cache_read=${usage.cache_read_input_tokens ?? 0} cache_write=${usage.cache_creation_input_tokens ?? 0}`,
+      ),
+  });
+
+/** Call Claude with the given prompt and settings */
+export const callClaude = (
+  prompt: string,
+  maxTokens: number,
+  temperature: number,
+): Promise<string> =>
+  callClaudeShared({
+    maxTokens,
+    temperature,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+// ─── Queries ─────────────────────────────────────────────────
+
+/** Get cached study tool result for a session */
+export const getToolResult = query({
+  args: {
+    sessionId: v.id('sessions'),
+    toolType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('studyToolResults')
+      .withIndex('by_session_tool', (q) =>
+        q.eq('sessionId', args.sessionId).eq('toolType', args.toolType),
+      )
+      .unique();
+  },
+});
+
+/** Get all study tool results for a session */
+export const getAllToolResults = query({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('studyToolResults')
+      .withIndex('by_session_tool', (q) => q.eq('sessionId', args.sessionId))
+      .collect();
+  },
+});
+
+/** Get flashcard progress for a session */
+export const getFlashcardProgress = query({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    return await ctx.db
+      .query('flashcardProgress')
+      .withIndex('by_user_session', (q) => q.eq('userId', userId).eq('sessionId', args.sessionId))
+      .collect();
+  },
+});
+
+/** Get quiz attempts for a session */
+export const getQuizAttempts = query({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    return await ctx.db
+      .query('quizAttempts')
+      .withIndex('by_user_session', (q) => q.eq('userId', userId).eq('sessionId', args.sessionId))
+      .collect();
+  },
+});
+
+/** Get chat history for a session */
+export const getChatHistory = query({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    return await ctx.db
+      .query('chatHistory')
+      .withIndex('by_user_session', (q) => q.eq('userId', userId).eq('sessionId', args.sessionId))
+      .unique();
+  },
+});
+
+// ─── Mutations ───────────────────────────────────────────────
+
+/** Internal: save study tool result (called by actions) */
+export const saveToolResult = internalMutation({
+  args: {
+    userId: v.string(),
+    sessionId: v.id('sessions'),
+    toolType: v.string(),
+    result: v.string(),
+    lectureType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Delete existing result for this session+tool
+    const existing = await ctx.db
+      .query('studyToolResults')
+      .withIndex('by_session_tool', (q) =>
+        q.eq('sessionId', args.sessionId).eq('toolType', args.toolType),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        result: args.result,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    const now = Date.now();
+    const id = await ctx.db.insert('studyToolResults', {
+      userId: args.userId,
+      sessionId: args.sessionId,
+      toolType: args.toolType,
+      result: args.result,
+      lectureType: args.lectureType,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return id;
+  },
+});
+
+/** Delete a cached study tool result (for regeneration) */
+export const deleteToolResult = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    toolType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAuth(ctx);
+    const existing = await ctx.db
+      .query('studyToolResults')
+      .withIndex('by_session_tool', (q) =>
+        q.eq('sessionId', args.sessionId).eq('toolType', args.toolType),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+  },
+});
+
+/** Save flashcard progress */
+export const saveFlashcardProgress = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    cardIndex: v.number(),
+    confidence: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    const existing = await ctx.db
+      .query('flashcardProgress')
+      .withIndex('by_user_session', (q) => q.eq('userId', userId).eq('sessionId', args.sessionId))
+      .collect();
+
+    const card = existing.find((c) => c.cardIndex === args.cardIndex);
+    const now = Date.now();
+
+    // Simple spaced repetition intervals
+    const intervals: Record<string, number> = {
+      again: 1 * 60 * 1000, // 1 min
+      hard: 10 * 60 * 1000, // 10 min
+      good: 24 * 60 * 60 * 1000, // 1 day
+      easy: 3 * 24 * 60 * 60 * 1000, // 3 days
+    };
+
+    if (card) {
+      await ctx.db.patch(card._id, {
+        confidence: args.confidence,
+        lastReviewed: now,
+        reviewCount: card.reviewCount + 1,
+        nextReview: now + (intervals[args.confidence] || intervals.good),
+      });
+    } else {
+      await ctx.db.insert('flashcardProgress', {
+        userId,
+        sessionId: args.sessionId,
+        cardIndex: args.cardIndex,
+        confidence: args.confidence,
+        lastReviewed: now,
+        reviewCount: 1,
+        nextReview: now + (intervals[args.confidence] || intervals.good),
+      });
+    }
+  },
+});
+
+/** Save quiz attempt */
+export const saveQuizAttempt = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    answers: v.array(
+      v.object({
+        questionIndex: v.number(),
+        selectedAnswer: v.number(),
+        correct: v.boolean(),
+      }),
+    ),
+    score: v.number(),
+    totalQuestions: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    return await ctx.db.insert('quizAttempts', {
+      userId,
+      sessionId: args.sessionId,
+      answers: args.answers,
+      score: args.score,
+      totalQuestions: args.totalQuestions,
+      completedAt: Date.now(),
+    });
+  },
+});
+
+/** Save chat history */
+export const saveChatHistory = mutation({
+  args: {
+    sessionId: v.id('sessions'),
+    messages: v.array(
+      v.object({
+        role: v.string(),
+        content: v.string(),
+        timestamp: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx);
+    const existing = await ctx.db
+      .query('chatHistory')
+      .withIndex('by_user_session', (q) => q.eq('userId', userId).eq('sessionId', args.sessionId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        messages: args.messages,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert('chatHistory', {
+      userId,
+      sessionId: args.sessionId,
+      messages: args.messages,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ─── Actions (AI Generation) ────────────────────────────────
+
+/** Generate summary from session content */
+export const generateSummary = action({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getSummaryPrompt(lectureType);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.3);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'summary',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});
+
+/** Generate key concepts from session content */
+export const generateKeyConcepts = action({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getKeyConceptsPrompt(lectureType);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.2);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'keyConcepts',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});
+
+/** Generate flashcards from session content */
+export const generateFlashcards = action({
+  args: {
+    sessionId: v.id('sessions'),
+    count: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const count = args.count ?? 10;
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getFlashcardPrompt(lectureType, count);
+    const response = await callClaudeWithLecture(lecture, prompt, 3072, 0.4);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'flashcards',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});
+
+/** Generate quiz from session content */
+export const generateQuiz = action({
+  args: {
+    sessionId: v.id('sessions'),
+    questionCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const questionCount = args.questionCount ?? 10;
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getQuizPrompt(lectureType, questionCount);
+    const response = await callClaudeWithLecture(lecture, prompt, 4096, 0.4);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'quiz',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});
+
+/** Generate concept map from session content */
+export const generateConceptMap = action({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getConceptMapPrompt(lectureType);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.2);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'conceptMap',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});
+
+/** Generate ELI5 explanations from session content */
+export const generateEli5 = action({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, args) => {
+    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+
+    const lectureType = (session.lectureType || 'general') as LectureType;
+    const prompt = getEli5Prompt(lectureType);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.5);
+    const parsed = JSON.parse(extractJson(response));
+
+    await ctx.runMutation(internal.studyTools.saveToolResult, {
+      userId: session.userId,
+      sessionId: args.sessionId,
+      toolType: 'eli5',
+      result: JSON.stringify(parsed),
+      lectureType: session.lectureType,
+    });
+
+    return parsed;
+  },
+});

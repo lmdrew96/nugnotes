@@ -1,0 +1,1161 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Landing page — fixed "Nugg's Favorite" brand palette, intentionally NOT
+   theme-reactive: the signed-out marketing page should look the same
+   regardless of any theme a previous session on this browser saved. */
+:root {
+  --landing-teal-soft: #8cbdb9;
+  --landing-teal-deep: #244952;
+  --landing-amber: #dea549;
+  --landing-purple-dusty: #88739e;
+  --landing-green: #96d080;
+  --landing-red: #c45c5c;
+  --landing-lavender: #dbd5e2;
+  --landing-purple-deep: #6b5a7d;
+}
+
+/* NugNotes - ADHDesigns Brand Theme */
+/* Nugg's Favorite - Dusty purple + deep teal + warm amber palette */
+:root {
+  /* Updated to ADHDesigns brand colors */
+  /* Background primary: #88739E (dusty purple) - swapped with accent */
+  --background: #88739e;
+  --foreground: #dbd5e2; /* Text primary: light lavender */
+
+  /* Card surfaces - derived from dusty purple (darker) */
+  --card: #6b5a7d;
+  --card-foreground: #dbd5e2;
+
+  --popover: #6b5a7d;
+  --popover-foreground: #dbd5e2;
+
+  /* Primary - CTA amber #DEA549 */
+  --primary: #dea549;
+  --primary-foreground: #1a3338;
+
+  /* Secondary - muted purple for less prominent elements */
+  --secondary: #7a6590;
+  --secondary-foreground: #dbd5e2;
+
+  /* Muted - subtle backgrounds (darker purple) */
+  --muted: #6b5a7d;
+  --muted-foreground: #8cbdb9; /* Text secondary: soft teal */
+
+  /* Accent - deep teal #244952 for interactive elements - swapped with background */
+  --accent: #244952;
+  --accent-foreground: #dbd5e2;
+
+  /* Destructive - for errors */
+  --destructive: #c45c5c;
+  --destructive-foreground: #dbd5e2;
+
+  /* Success states: #96D080 (soft green) */
+  --success: #96d080;
+  --success-foreground: #1a3338;
+
+  /* Borders - derived from purple */
+  --border: #5d4d6e;
+  --input: #7a6590;
+  --ring: #244952;
+
+  /* Custom NugNotes colors */
+  /* CTA buttons use warm amber */
+  /* Lightened from #dea549 (2.37:1) to clear WCAG 1.4.11's 3:1 on the glass card
+     the button sits on (#78658c). Light amber needs a dark icon: white was 2.19:1.
+     --record-foreground defaults dark here; themes where white reads better override it. */
+  --record: #f2c46d;
+  --record-glow: rgba(242, 196, 109, 0.4);
+  --record-foreground: #2e2438;
+  --waveform: #8cbdb9;
+  /* Transcript bg - darker purple */
+  --transcript-bg: #6b5a7d;
+
+  /* === GLASSMORPHISM TOKENS === */
+  --glass-bg: rgba(107, 90, 125, 0.55);
+  --glass-bg-heavy: rgba(107, 90, 125, 0.72);
+  /* Teal-tinted so toolbars, chips and outline buttons carry the theme's second hue. */
+  --glass-bg-light: rgba(36, 73, 82, 0.55);
+  --glass-blur: 16px;
+  --glass-blur-heavy: 24px;
+  --glass-blur-light: 8px;
+  --glass-border: rgba(222, 165, 73, 0.25);
+  --glass-border-strong: rgba(222, 165, 73, 0.45);
+  --glass-shadow: 0 4px 24px rgba(26, 51, 56, 0.2), 0 1px 2px rgba(0, 0, 0, 0.08);
+  --glass-shadow-lg: 0 8px 40px rgba(26, 51, 56, 0.28), 0 2px 4px rgba(0, 0, 0, 0.1);
+  --glass-shadow-inset: inset 0 1px 0 rgba(219, 213, 226, 0.08);
+  --glass-glow: rgba(222, 165, 73, 0.15);
+  --glass-glow-strong: rgba(222, 165, 73, 0.3);
+  /* Teal → purple → deep teal so panels pick up both hues instead of reading all-purple. */
+  --app-bg-from: #244952;
+  --app-bg-via: #443856;
+  --app-bg-to: #1a3338;
+  --orb-opacity: 0.45;
+
+  --radius: 0.875rem;
+
+  /* Sidebar uses darker purple */
+  --sidebar: #6b5a7d;
+  --sidebar-foreground: #dbd5e2;
+  --sidebar-primary: #dea549;
+  --sidebar-primary-foreground: #1a3338;
+  --sidebar-accent: #7a6590;
+  --sidebar-accent-foreground: #dbd5e2;
+  --sidebar-border: #5d4d6e;
+  --sidebar-ring: #244952;
+
+  /* Font colors for editor */
+  --font-color-1: #dbd5e2;
+  --font-color-2: #dea549;
+  --font-color-3: #96d080;
+  --font-color-4: #e06060;
+  --font-color-5: #7ec8c8;
+  --font-color-6: #c49bff;
+  --font-color-7: #f0a0c0;
+  --font-color-8: #e0d080;
+}
+
+@theme inline {
+  --font-sans: "Instrument Sans", "Geist", "Geist Fallback", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply text-foreground;
+    background: linear-gradient(
+      135deg,
+      var(--app-bg-from) 0%,
+      var(--app-bg-via) 50%,
+      var(--app-bg-to) 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+/* === GLASSMORPHISM UTILITY CLASSES === */
+@layer utilities {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), var(--glass-shadow-inset);
+  }
+
+  .glass-heavy {
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(var(--glass-blur-heavy));
+    -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-lg), var(--glass-shadow-inset);
+  }
+
+  .glass-light {
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur-light));
+    -webkit-backdrop-filter: blur(var(--glass-blur-light));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-inset);
+  }
+
+  .glass-hover {
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .glass-hover:hover {
+    background: var(--glass-bg-heavy);
+    border-color: var(--glass-border-strong);
+    box-shadow: var(--glass-shadow-lg), var(--glass-shadow-inset), 0 0 20px var(--glass-glow);
+  }
+}
+
+/* Background mesh gradient orbs */
+.app-bg-orbs {
+  position: relative;
+}
+.app-bg-orbs::before,
+.app-bg-orbs::after {
+  content: "";
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: var(--orb-opacity);
+  pointer-events: none;
+  z-index: 0;
+}
+.app-bg-orbs::before {
+  width: 500px;
+  height: 500px;
+  top: -10%;
+  right: -5%;
+  background: var(--primary);
+}
+.app-bg-orbs::after {
+  width: 600px;
+  height: 600px;
+  bottom: -15%;
+  left: -10%;
+  background: var(--accent);
+}
+
+/* === GLASSMORPHISM ANIMATIONS === */
+@keyframes glass-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glass-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.glass-enter {
+  animation: glass-fade-in 0.3s ease-out;
+}
+
+.glass-slide-up {
+  animation: glass-slide-up 0.35s ease-out;
+}
+
+/* Custom animations for NugNotes */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px var(--record-glow), 0 0 40px var(--record-glow);
+  }
+  50% {
+    box-shadow: 0 0 30px var(--record-glow), 0 0 60px var(--record-glow);
+  }
+}
+
+@keyframes waveform {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.recording-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.waveform-bar {
+  animation: waveform 0.5s ease-in-out infinite;
+}
+
+/* ─── StudyQuest Cat Animations ──────────────────────────────── */
+
+@keyframes xp-flash {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.xp-gain-popup {
+  animation: xp-flash 1.5s ease-out forwards;
+}
+
+/* ─── Legal Document Markdown Styles ──────────────────────────── */
+.legal-doc h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0 0 0.5em;
+}
+.legal-doc h2 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 1.25em 0 0.4em;
+}
+.legal-doc h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 1em 0 0.3em;
+}
+.legal-doc hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+.legal-doc ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.legal-doc li {
+  margin: 0.25em 0;
+}
+.legal-doc p {
+  margin: 0.5em 0;
+}
+.legal-doc strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.legal-doc a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.legal-doc code {
+  background: var(--glass-bg-light);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+.legal-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+}
+.legal-doc th,
+.legal-doc td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.legal-doc th {
+  background: var(--glass-bg-light);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Purring Pastels Theme
+ * Palette: Lilac Wash #EFCAF7 (background), Soft Almond #F4F1EC (surfaces),
+ * Magenta Hush #BF4598, Soft Aquamarine #B2D1C3, Cobalt Gleam #AFBAC9, Almond Drift #BAA290.
+ * Text-carrying tokens are deepened from the palette to clear WCAG 4.5:1 on lilac and almond. */
+[data-theme="soft-focus"] {
+  --background: #efcaf7;
+  --foreground: #3a2a40;
+  --card: #f4f1ec;
+  --card-foreground: #3a2a40;
+  --popover: #f4f1ec;
+  --popover-foreground: #3a2a40;
+  /* Magenta Hush deepened: #bf4598 is only 3.20:1 on lilac, too low for 56 text-primary uses. */
+  --primary: #9a2c78;
+  --primary-foreground: #ffffff;
+  --secondary: #b2d1c3;
+  --secondary-foreground: #3a2a40;
+  --muted: #f4f1ec;
+  --muted-foreground: #5e4f5e;
+  /* Cobalt Gleam deepened to text strength (5.12:1 on lilac). */
+  --accent: #44557a;
+  --accent-foreground: #ffffff;
+  --destructive: #a82c26;
+  --destructive-foreground: #ffffff;
+  --success: #285e2f;
+  --success-foreground: #ffffff;
+  --border: #baa290;
+  --input: #baa290;
+  /* Non-text UI only needs 3:1 (WCAG 1.4.11); Magenta Hush as-is clears it at 3.20:1. */
+  --ring: #bf4598;
+  --record: #bf4598;
+  --record-glow: rgba(191, 69, 152, 0.4);
+  --record-foreground: #ffffff;
+  --waveform: #3e7862;
+  --transcript-bg: #f4f1ec;
+  --sidebar: #f4f1ec;
+  --sidebar-foreground: #3a2a40;
+  --sidebar-primary: #9a2c78;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #afbac9;
+  --sidebar-accent-foreground: #3a2a40;
+  --sidebar-border: #baa290;
+  --sidebar-ring: #bf4598;
+
+  /* Glassmorphism - panels are translucent Soft Almond so each one picks up the
+   * pink → cobalt → aquamarine backdrop beneath it; glass-light (toolbars, chips,
+   * outline/secondary buttons) is tinted Soft Aquamarine and edges are Cobalt. */
+  --glass-bg: rgba(244, 241, 236, 0.55);
+  --glass-bg-heavy: rgba(244, 241, 236, 0.85);
+  --glass-bg-light: rgba(178, 209, 195, 0.6);
+  --glass-blur: 16px;
+  --glass-blur-heavy: 24px;
+  --glass-blur-light: 8px;
+  --glass-border: rgba(68, 85, 122, 0.22);
+  --glass-border-strong: rgba(68, 85, 122, 0.4);
+  --glass-shadow: 0 4px 24px rgba(58, 42, 64, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --glass-shadow-lg: 0 8px 40px rgba(58, 42, 64, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --glass-glow: rgba(191, 69, 152, 0.2);
+  --glass-glow-strong: rgba(191, 69, 152, 0.4);
+  --app-bg-from: #efcaf7;
+  --app-bg-via: #c9d1e6;
+  --app-bg-to: #b2d1c3;
+  --orb-opacity: 0.45;
+
+  --font-color-1: #3a2a40;
+  --font-color-2: #9a2c78;
+  --font-color-3: #285e2f;
+  --font-color-4: #b02020;
+  --font-color-5: #00695c;
+  --font-color-6: #6a1b9a;
+  --font-color-7: #44557a;
+  --font-color-8: #9a3f00;
+}
+
+/* Void Kitty Theme */
+[data-theme="blackout"] {
+  --background: #000000;
+  --foreground: #e0e0e0;
+  --card: #0d1a14;
+  --card-foreground: #e0e0e0;
+  --popover: #0d1a14;
+  --popover-foreground: #e0e0e0;
+  --primary: #00f2ff;
+  --primary-foreground: #000000;
+  --secondary: #0d1a14;
+  --secondary-foreground: #99ff85;
+  --muted: #0d1a14;
+  --muted-foreground: #99ff85;
+  --accent: #b580ff;
+  --accent-foreground: #000000;
+  --destructive: #ff5252;
+  --destructive-foreground: #000000;
+  --success: #99ff85;
+  --success-foreground: #000000;
+  --border: #1a2e26;
+  --input: #0d1a14;
+  --ring: #00f2ff;
+  --record: #00f2ff;
+  --record-glow: rgba(0, 242, 255, 0.4);
+  --waveform: #99ff85;
+  --transcript-bg: #0d1a14;
+  --sidebar: #0d1a14;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #00f2ff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #b580ff;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #1a2e26;
+  --sidebar-ring: #00f2ff;
+
+  /* Glassmorphism - dark neon glass */
+  --glass-bg: rgba(13, 26, 20, 0.65);
+  --glass-bg-heavy: rgba(13, 26, 20, 0.8);
+  --glass-bg-light: rgba(181, 128, 255, 0.14);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 28px;
+  --glass-blur-light: 10px;
+  --glass-border: rgba(181, 128, 255, 0.25);
+  --glass-border-strong: rgba(181, 128, 255, 0.45);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --glass-shadow-inset: inset 0 1px 0 rgba(0, 242, 255, 0.05);
+  --glass-glow: rgba(0, 242, 255, 0.12);
+  --glass-glow-strong: rgba(0, 242, 255, 0.28);
+  --app-bg-from: #000000;
+  --app-bg-via: #050f0b;
+  --app-bg-to: #1a0f2e;
+  --orb-opacity: 0.3;
+
+  --font-color-1: #e0e0e0;
+  --font-color-2: #00f2ff;
+  --font-color-3: #99ff85;
+  --font-color-4: #ff5252;
+  --font-color-5: #b580ff;
+  --font-color-6: #ffb74d;
+  --font-color-7: #f48fb1;
+  --font-color-8: #80deea;
+}
+
+/* Chaos Cat Theme */
+[data-theme="chaos-cat"] {
+  --background: #1a0a1f;
+  --foreground: #ffffff;
+  --card: #2d1235;
+  --card-foreground: #ffffff;
+  --popover: #2d1235;
+  --popover-foreground: #ffffff;
+  --primary: #1fe1fd;
+  --primary-foreground: #1a0a1f;
+  --secondary: #2d1235;
+  --secondary-foreground: #ffdb00;
+  --muted: #2d1235;
+  --muted-foreground: #ffdb00;
+  --accent: #ff5ee0;
+  --accent-foreground: #1a0a1f;
+  --destructive: #ff1744;
+  --destructive-foreground: #ffffff;
+  --success: #76ff03;
+  --success-foreground: #1a0a1f;
+  --border: #4a1a52;
+  --input: #2d1235;
+  --ring: #1fe1fd;
+  --record: #1fe1fd;
+  --record-glow: rgba(31, 225, 253, 0.4);
+  --waveform: #ff5ee0;
+  --transcript-bg: #2d1235;
+  --sidebar: #2d1235;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #1fe1fd;
+  --sidebar-primary-foreground: #1a0a1f;
+  --sidebar-accent: #ff5ee0;
+  --sidebar-accent-foreground: #1a0a1f;
+  --sidebar-border: #4a1a52;
+  --sidebar-ring: #1fe1fd;
+
+  /* Glassmorphism - vibrant dark glass */
+  --glass-bg: rgba(45, 18, 53, 0.6);
+  --glass-bg-heavy: rgba(45, 18, 53, 0.78);
+  --glass-bg-light: rgba(255, 94, 224, 0.16);
+  --glass-blur: 18px;
+  --glass-blur-heavy: 26px;
+  --glass-blur-light: 10px;
+  --glass-border: rgba(255, 94, 224, 0.3);
+  --glass-border-strong: rgba(255, 94, 224, 0.5);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 94, 224, 0.06);
+  --glass-glow: rgba(31, 225, 253, 0.12);
+  --glass-glow-strong: rgba(31, 225, 253, 0.28);
+  --app-bg-from: #1a0a1f;
+  --app-bg-via: #2d1235;
+  --app-bg-to: #062a33;
+  --orb-opacity: 0.35;
+
+  --font-color-1: #ffffff;
+  --font-color-2: #1fe1fd;
+  --font-color-3: #76ff03;
+  --font-color-4: #ff1744;
+  --font-color-5: #ff5ee0;
+  --font-color-6: #ffea00;
+  --font-color-7: #ff9100;
+  --font-color-8: #b388ff;
+}
+
+/* High Contrast Dark Theme */
+[data-theme="high-contrast-dark"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
+  --primary: #00ffff;
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #cccccc;
+  --accent: #ffff00;
+  --accent-foreground: #000000;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --success: #00ff00;
+  --success-foreground: #000000;
+  --border: #ffffff;
+  --input: #1a1a1a;
+  --ring: #00ffff;
+  --record: #00ffff;
+  --record-glow: rgba(0, 255, 255, 0.5);
+  --waveform: #ffff00;
+  --transcript-bg: #1a1a1a;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00ffff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #ffff00;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #ffffff;
+  --sidebar-ring: #00ffff;
+
+  /* Glassmorphism - high opacity for readability */
+  --glass-bg: rgba(26, 26, 26, 0.8);
+  --glass-bg-heavy: rgba(26, 26, 26, 0.92);
+  --glass-bg-light: rgba(26, 26, 26, 0.6);
+  --glass-blur: 8px;
+  --glass-blur-heavy: 12px;
+  --glass-blur-light: 4px;
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-border-strong: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --glass-glow: rgba(0, 255, 255, 0.15);
+  --glass-glow-strong: rgba(0, 255, 255, 0.3);
+  --app-bg-from: #000000;
+  --app-bg-via: #0a0a0a;
+  --app-bg-to: #000000;
+  --orb-opacity: 0;
+
+  --font-color-1: #ffffff;
+  --font-color-2: #00ffff;
+  --font-color-3: #00ff00;
+  --font-color-4: #ff0000;
+  --font-color-5: #ffff00;
+  --font-color-6: #ff80ff;
+  --font-color-7: #ff8000;
+  --font-color-8: #80ff80;
+}
+
+/* High Contrast Light Theme */
+[data-theme="high-contrast-light"] {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #f0f0f0;
+  --card-foreground: #000000;
+  --popover: #f0f0f0;
+  --popover-foreground: #000000;
+  --primary: #006600;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #000000;
+  --muted: #f0f0f0;
+  --muted-foreground: #333333;
+  --accent: #0000cc;
+  --accent-foreground: #ffffff;
+  --destructive: #cc0000;
+  --destructive-foreground: #ffffff;
+  --success: #006600;
+  --success-foreground: #ffffff;
+  --border: #000000;
+  --input: #f0f0f0;
+  --ring: #0000cc;
+  --record: #006600;
+  --record-glow: rgba(0, 102, 0, 0.4);
+  --record-foreground: #ffffff;
+  --waveform: #0000cc;
+  --transcript-bg: #f0f0f0;
+  --sidebar: #f0f0f0;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #006600;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #0000cc;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #000000;
+  --sidebar-ring: #0000cc;
+
+  /* Glassmorphism - high opacity for readability */
+  --glass-bg: rgba(240, 240, 240, 0.82);
+  --glass-bg-heavy: rgba(240, 240, 240, 0.94);
+  --glass-bg-light: rgba(240, 240, 240, 0.6);
+  --glass-blur: 8px;
+  --glass-blur-heavy: 12px;
+  --glass-blur-light: 4px;
+  --glass-border: rgba(0, 0, 0, 0.2);
+  --glass-border-strong: rgba(0, 0, 0, 0.4);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --glass-glow: rgba(0, 102, 0, 0.1);
+  --glass-glow-strong: rgba(0, 102, 0, 0.22);
+  --app-bg-from: #ffffff;
+  --app-bg-via: #f8f8f8;
+  --app-bg-to: #f0f0f0;
+  --orb-opacity: 0;
+
+  --font-color-1: #000000;
+  --font-color-2: #006600;
+  --font-color-3: #0000cc;
+  --font-color-4: #cc0000;
+  --font-color-5: #663399;
+  --font-color-6: #c45000;
+  --font-color-7: #880044;
+  --font-color-8: #005577;
+}
+
+/* Nyan Cat Dark Theme — deep-space navy with pink + yellow accents */
+[data-theme="nyan-cat-dark"] {
+  --background: #00062e;
+  --foreground: #ffffff;
+  --card: #0b1547;
+  --card-foreground: #ffffff;
+  --popover: #0b1547;
+  --popover-foreground: #ffffff;
+  --primary: #ff6ec7;
+  --primary-foreground: #00062e;
+  --secondary: #0b1547;
+  --secondary-foreground: #ffea00;
+  --muted: #0b1547;
+  --muted-foreground: #a4b8ff;
+  --accent: #ffea00;
+  --accent-foreground: #00062e;
+  --destructive: #ff1744;
+  --destructive-foreground: #ffffff;
+  --success: #76ff03;
+  --success-foreground: #00062e;
+  --border: #1a2e5e;
+  --input: #0b1547;
+  --ring: #ff6ec7;
+  --record: #ff6ec7;
+  --record-glow: rgba(255, 110, 199, 0.45);
+  --waveform: #ffea00;
+  --transcript-bg: #0b1547;
+  --sidebar: #0b1547;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ff6ec7;
+  --sidebar-primary-foreground: #00062e;
+  --sidebar-accent: #ffea00;
+  --sidebar-accent-foreground: #00062e;
+  --sidebar-border: #1a2e5e;
+  --sidebar-ring: #ff6ec7;
+
+  /* Glassmorphism - starry navy glass with pink glow */
+  --glass-bg: rgba(11, 21, 71, 0.6);
+  --glass-bg-heavy: rgba(11, 21, 71, 0.82);
+  --glass-bg-light: rgba(11, 21, 71, 0.36);
+  --glass-blur: 18px;
+  --glass-blur-heavy: 26px;
+  --glass-blur-light: 10px;
+  --glass-border: rgba(255, 234, 0, 0.14);
+  --glass-border-strong: rgba(255, 234, 0, 0.28);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 234, 0, 0.06);
+  --glass-glow: rgba(255, 110, 199, 0.16);
+  --glass-glow-strong: rgba(255, 110, 199, 0.32);
+  --app-bg-from: #00062e;
+  --app-bg-via: #0b1547;
+  --app-bg-to: #00031a;
+  --orb-opacity: 0.3;
+
+  --font-color-1: #ffffff;
+  --font-color-2: #ff0000;
+  --font-color-3: #ff9900;
+  --font-color-4: #ffea00;
+  --font-color-5: #33ff00;
+  --font-color-6: #00d4ff;
+  --font-color-7: #6633ff;
+  --font-color-8: #ff6ec7;
+}
+
+/* Nyan Cat Light Theme */
+[data-theme="nyan-cat-light"] {
+  --background: #fff0ff;
+  --foreground: #330033;
+  --card: #ffe0ff;
+  --card-foreground: #330033;
+  --popover: #ffe0ff;
+  --popover-foreground: #330033;
+  --primary: #cc0088;
+  --primary-foreground: #ffffff;
+  --secondary: #ffe0ff;
+  --secondary-foreground: #330033;
+  --muted: #ffe0ff;
+  --muted-foreground: #7a2a7a;
+  --accent: #7b00ff;
+  --accent-foreground: #ffffff;
+  --destructive: #d50000;
+  --destructive-foreground: #ffffff;
+  --success: #2e7d32;
+  --success-foreground: #ffffff;
+  --border: #f2c4ff;
+  --input: #ffe0ff;
+  --ring: #cc0088;
+  --record: #ff00aa;
+  --record-glow: rgba(255, 0, 170, 0.4);
+  --waveform: #7b00ff;
+  --transcript-bg: #ffe0ff;
+  --sidebar: #ffe0ff;
+  --sidebar-foreground: #330033;
+  --sidebar-primary: #cc0088;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #7b00ff;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #f2c4ff;
+  --sidebar-ring: #cc0088;
+
+  /* Glassmorphism - sparkly pink light */
+  --glass-bg: rgba(255, 224, 255, 0.72);
+  --glass-bg-heavy: rgba(255, 224, 255, 0.9);
+  --glass-bg-light: rgba(123, 0, 255, 0.07);
+  --glass-blur: 14px;
+  --glass-blur-heavy: 22px;
+  --glass-blur-light: 8px;
+  --glass-border: rgba(123, 0, 255, 0.22);
+  --glass-border-strong: rgba(123, 0, 255, 0.4);
+  --glass-shadow: 0 4px 24px rgba(123, 0, 255, 0.08), 0 1px 2px rgba(51, 0, 51, 0.04);
+  --glass-shadow-lg: 0 8px 40px rgba(123, 0, 255, 0.14), 0 2px 4px rgba(51, 0, 51, 0.06);
+  --glass-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --glass-glow: rgba(255, 0, 170, 0.12);
+  --glass-glow-strong: rgba(123, 0, 255, 0.22);
+  --app-bg-from: #fff0ff;
+  --app-bg-via: #f6e6ff;
+  --app-bg-to: #eee0ff;
+  --orb-opacity: 0.25;
+
+  --font-color-1: #330033;
+  --font-color-2: #d50000;
+  --font-color-3: #ef6c00;
+  --font-color-4: #c4b200;
+  --font-color-5: #2e7d32;
+  --font-color-6: #0277bd;
+  --font-color-7: #4a148c;
+  --font-color-8: #ad1457;
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 100%;
+  font-size: 12px;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Active toolbar buttons */
+button[data-active="true"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* TipTap heading styles */
+.ProseMirror h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+}
+
+.ProseMirror h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+/* TipTap list styles */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+  margin: 1em 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin: 0.25em 0;
+}
+
+/* TipTap blockquote styles */
+.ProseMirror blockquote {
+  border-left: 4px solid var(--primary);
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+
+/* TipTap code block styles */
+.ProseMirror pre {
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(var(--glass-blur-light));
+  border: 1px solid var(--glass-border);
+  border-radius: 0.5rem;
+  color: var(--foreground);
+  font-family: "JetBrains Mono", monospace;
+  padding: 0.75rem 1rem;
+  margin: 1em 0;
+}
+
+.ProseMirror code {
+  background: var(--glass-bg-light);
+  border-radius: 0.25rem;
+  color: var(--foreground);
+  font-family: "JetBrains Mono", monospace;
+  padding: 0.2em 0.4em;
+}
+
+/* TipTap table styles */
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  overflow: hidden;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--glass-border);
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 0.5em;
+  position: relative;
+  vertical-align: top;
+}
+
+.ProseMirror th {
+  background-color: var(--glass-bg-light);
+  font-weight: bold;
+  text-align: left;
+}
+
+.ProseMirror .selectedCell:after {
+  background: var(--primary);
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.2;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+/* TipTap highlight styles */
+.ProseMirror mark {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.125em 0.25em;
+  border-radius: 0.125rem;
+}
+
+/* Citation mark styles */
+.citation-mark {
+  border-bottom: 1px dotted var(--primary);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+
+.citation-mark::after {
+  content: "\23F1"; /* stopwatch emoji */
+  font-size: 0.6em;
+  vertical-align: super;
+  margin-left: 2px;
+  opacity: 0.4;
+}
+
+.citation-mark:hover {
+  background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.citation-mark:hover::after {
+  opacity: 1;
+}
+
+/* ============================================================ */
+/* Easter Eggs                                                  */
+/* ============================================================ */
+
+/* Cat Party — falling cat sprites */
+.falling-cat {
+  position: fixed;
+  top: -60px;
+  width: 48px;
+  height: 48px;
+  /* Sprite strips are 32px tall with multiple frames horizontally.
+     `background-size: auto 100%` scales the strip's height to match the
+     element, keeping the aspect ratio; the container's width then clips to
+     just the first frame. */
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: auto 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 60;
+  animation: cat-fall linear forwards;
+  will-change: transform;
+}
+
+@keyframes cat-fall {
+  from {
+    transform: translateY(0) rotate(var(--rotation));
+  }
+  to {
+    /* Cats always land on their feet — unwind to 0° on touchdown. */
+    transform: translateY(calc(100vh + 100px)) rotate(0deg);
+  }
+}
+
+/* Study Buddy cat sprite container */
+.study-buddy-sprite {
+  position: fixed;
+  pointer-events: none;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  /* Hidden until JS sets its transform for the first time */
+  visibility: hidden;
+}
+
+.study-buddy-sprite[data-ready="true"] {
+  visibility: visible;
+}
+
+/* Nyan canvas overlay */
+.nyan-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Easter-egg activation pulse (for title on Study Buddy toggle) */
+.easter-egg-active {
+  animation: easter-egg-pulse 500ms ease-out;
+}
+
+@keyframes easter-egg-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Screen shake on nyan activation */
+.nyan-screen-shake {
+  animation: nyan-shake 0.5s ease-out;
+}
+
+@keyframes nyan-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-4px, -2px);
+  }
+  30% {
+    transform: translate(4px, 2px);
+  }
+  45% {
+    transform: translate(-3px, -1px);
+  }
+  60% {
+    transform: translate(3px, 1px);
+  }
+  75% {
+    transform: translate(-2px, 0);
+  }
+  90% {
+    transform: translate(2px, 0);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .falling-cat {
+    display: none;
+  }
+  .nyan-canvas {
+    display: none;
+  }
+  .nyan-screen-shake {
+    animation: none;
+  }
+  .easter-egg-active {
+    animation: none;
+  }
+}
+
+/*
+ * Touch targets. Icon buttons are drawn at 24–28px (h-6 / h-7), which is fine
+ * for a mouse and hard to hit with a finger. On touch screens they get an
+ * invisible 44px hit area centred on the button, so nothing moves visually.
+ *
+ * Unlayered on purpose: it has to beat Tailwind's utilities layer. Buttons
+ * that are already positioned (absolute/fixed/sticky) keep their positioning —
+ * ::after works against those just as well.
+ *
+ * The editor toolbar is the exception. Its buttons sit 4px apart, so expanded
+ * hit areas would overlap and a tap near the edge of one would land on its
+ * neighbour. There the buttons themselves grow to 44px on touch; the toolbar
+ * already wraps.
+ */
+@media (pointer: coarse) {
+  :is(button, [role="button"]):is(.h-6, .h-7, .size-6, .size-7):not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+
+  :is(button, [role="button"]):is(.h-6, .h-7, .size-6, .size-7)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+
+  [data-touch-toolbar] :is(button, [role="button"]) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  [data-touch-toolbar] :is(button, [role="button"])::after {
+    content: none;
+  }
+}

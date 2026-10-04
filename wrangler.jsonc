@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nugnotes",
+  "compatibility_date": "2026-09-22",
+
+  // NugNotes is a pure client-side SPA: Vite builds everything into dist/ and
+  // there is no server code here at all. Convex, Clerk and R2 are
+  // reached directly from the browser, so this Worker has no `main` — it only
+  // serves static assets. Nothing is bundled by wrangler, which is why the
+  // esbuild `keep_names` and `nodejs_compat` settings that the migration
+  // playbook calls for do not apply to this project.
+  "assets": {
+    "directory": "./dist",
+
+    // Replaces the catch-all rewrite that vercel.json used to do. TanStack
+    // Router owns every path below /, so any request that does not match a
+    // built file has to be answered with index.html rather than a 404.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

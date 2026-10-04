@@ -1,0 +1,17 @@
+export const ACHIEVEMENT_DEFINITIONS = [
+  { id: 'first-session', name: 'First Steps', description: 'Complete your first session' },
+  { id: '10-sessions', name: 'Getting Started', description: 'Complete 10 sessions' },
+  { id: '50-sessions', name: 'Dedicated Student', description: 'Complete 50 sessions' },
+  { id: '1-hour', name: 'Hour of Power', description: 'Study for 1 total hour' },
+  { id: '10-hours', name: 'Hitting Stride', description: 'Study for 10 total hours' },
+  { id: '50-hours', name: 'Study Machine', description: 'Study for 50 total hours' },
+  { id: '100-hours', name: 'Centurion', description: 'Study for 100 total hours' },
+  { id: '3-day-streak', name: 'On a Roll', description: 'Maintain a 3-day streak' },
+  { id: '7-day-streak', name: 'Week Warrior', description: 'Maintain a 7-day streak' },
+  { id: '14-day-streak', name: 'Fortnight Focus', description: 'Maintain a 14-day streak' },
+  { id: '30-day-streak', name: 'Unstoppable', description: 'Maintain a 30-day streak' },
+  { id: 'first-notes', name: 'Note Taker', description: 'Generate AI notes for the first time' },
+  { id: 'night-owl', name: 'Night Owl', description: 'Study after 10 PM' },
+  { id: 'early-bird', name: 'Early Bird', description: 'Study before 8 AM' },
+  { id: 'marathon', name: 'Marathon', description: 'Study for over an hour in one sitting' },
+] as const;
