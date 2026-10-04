@@ -169,6 +169,32 @@ describe('attachConvexSync', () => {
     expect(cb.onFailed).not.toHaveBeenCalled();
   });
 
+  it('reports unpushed edits until the server has them, including through a failed push', async () => {
+    const doc = new Y.Doc();
+    const statuses: { unpushed: boolean; lastLocalUpdateAt: number }[] = [];
+    attachConvexSync({
+      client: fakeClient(server),
+      docKey: DOC,
+      ydoc: doc,
+      callbacks: callbacks(),
+      onSaveStatus: (s) => statuses.push(s),
+    });
+    await settle();
+
+    server.failPushes = 1;
+    type(doc, 'saved eventually');
+    expect(statuses.at(-1)).toMatchObject({ unpushed: true });
+    expect(statuses.at(-1)?.lastLocalUpdateAt).toBeGreaterThan(0);
+
+    await settle(PUSH_DEBOUNCE_MS); // first push fails
+    expect(statuses.at(-1)).toMatchObject({ unpushed: true });
+
+    await settle(2_000 + PUSH_DEBOUNCE_MS); // retry lands
+    await settle();
+    expect(server.text()).toBe('saved eventually');
+    expect(statuses.at(-1)).toMatchObject({ unpushed: false });
+  });
+
   it('sends pending edits before closing', async () => {
     const doc = new Y.Doc();
     const client = fakeClient(server);

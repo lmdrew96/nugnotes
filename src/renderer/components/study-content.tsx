@@ -321,7 +321,13 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
           </TabsContent>
         )}
 
-        <TabsContent value="notes" className="h-[calc(100%-2rem)] mt-0">
+        {/* Kept mounted while another tab shows: unmounting the editor right
+            after an edit would lose it, and coming back is instant. */}
+        <TabsContent
+          value="notes"
+          forceMount
+          className="h-[calc(100%-2rem)] mt-0 data-[state=inactive]:hidden"
+        >
           {readOnly ? (
             <ScrollArea className="h-full rounded-xl glass p-4">
               {recording.notesMarkdown ? (

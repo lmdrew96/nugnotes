@@ -15,8 +15,13 @@
 import { ConvexClient } from 'convex/browser';
 import { bootstrapSuperDocCollaborationWorker } from 'superdoc/collaboration-worker';
 import { attachConvexSync } from './convex-provider';
+import { SAVE_STATUS_CHANNEL, type SaveStatusMessage } from './save-status';
 
 type ProviderOptions = { convexUrl: string };
+
+// Tells the page when a note's edits have reached Convex (see save-status.ts).
+const saveStatus =
+  typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(SAVE_STATUS_CHANNEL);
 
 bootstrapSuperDocCollaborationWorker({
   providerAdapters: {
@@ -34,6 +39,8 @@ bootstrapSuperDocCollaborationWorker({
           docKey: documentId,
           ydoc,
           callbacks: { onSynced, onDegraded, onFailed },
+          onSaveStatus: (status) =>
+            saveStatus?.postMessage({ docKey: documentId, ...status } satisfies SaveStatusMessage),
         });
         const close = () => void sync.destroy();
         return { disconnect: close, destroy: close };

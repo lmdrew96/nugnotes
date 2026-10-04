@@ -1,6 +1,7 @@
 import { registerPendingSaveFlush } from '@/lib/pending-save';
 import { useAuth } from '@clerk/clerk-react';
 import { SuperDocEditor, type SuperDocReadyEvent } from '@superdoc-dev/react';
+import { useBlocker } from '@tanstack/react-router';
 import '@superdoc-dev/react/style.css';
 import { useMutation } from 'convex/react';
 import {
@@ -20,6 +21,11 @@ import {
   superDocFontsConfig,
 } from '../../superdoc/fonts';
 import { normalizeSuperDocMarkdown } from '../../superdoc/markdown';
+import {
+  SAVE_STATUS_CHANNEL,
+  type SaveStatusMessage,
+  isNoteSaved,
+} from '../../superdoc/save-status';
 
 /** Built by scripts/build-superdoc-assets.mjs. */
 const COLLAB_WORKER_URL = '/superdoc/collab-worker.js';
@@ -27,6 +33,39 @@ const COLLAB_WORKER_URL = '/superdoc/collab-worker.js';
 const EXTRACT_DEBOUNCE_MS = 1000;
 /** How long to wait before re-claiming a room another tab is still creating. */
 const CLAIM_RETRY_MS = 2000;
+/** Longest we hold navigation waiting for the last edit to save. */
+const SAVE_WAIT_MS = 4000;
+
+/** Keys that change the note (anything that isn't pure navigation or a modifier). */
+const NON_EDITING_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  'Shift',
+  'Control',
+  'Alt',
+  'Meta',
+  'CapsLock',
+  'Escape',
+  'Tab',
+  'F5',
+]);
+const isEditingKey = (e: KeyboardEvent) => {
+  if (NON_EDITING_KEYS.has(e.key)) return false;
+  // Shortcuts that don't edit (copy, select all, find, …).
+  if (
+    (e.metaKey || e.ctrlKey) &&
+    !['v', 'x', 'z', 'y', 'b', 'i', 'u'].includes(e.key.toLowerCase())
+  ) {
+    return false;
+  }
+  return true;
+};
 
 type RoomMode = 'create' | 'join';
 type Connection = 'connecting' | 'synced' | 'degraded' | 'failed';
@@ -74,6 +113,8 @@ export interface NotesSnapshot {
 export interface NotesEditorHandle {
   /** Rebuild and hand back the snapshot now (e.g. before generating notes). */
   flush(): Promise<void>;
+  /** Wait (up to a few seconds) until the latest edit has reached the server. */
+  waitUntilSaved(): Promise<boolean>;
   /** Append markdown (e.g. Nugget's generated notes) at the end of the note. */
   insertMarkdown(markdown: string): Promise<void>;
 }
@@ -92,7 +133,9 @@ interface NotesEditorProps {
  * what the worker can't:
  *   - claiming the room (create vs join) before SuperDoc mounts,
  *   - rebuilding the plain-text and markdown copies after edits settle,
- *   - telling the student when edits aren't reaching the server.
+ *   - telling the student when edits aren't reaching the server,
+ *   - holding navigation until the latest edit has saved (an edit typed just
+ *     before the editor unmounts is otherwise lost — see save-status.ts).
  * Key it on docKey: SuperDoc reads its document once at mount.
  */
 const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function NotesEditor(
@@ -177,6 +220,92 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [unsynced]);
 
+  // ---- save tracking: has the latest edit reached the server? ----
+  // lastEditAt comes from the student's own input on this page (not
+  // onEditorUpdate, which also fires for other people's edits in room notes);
+  // the worker reports what it has pushed over a BroadcastChannel.
+  const lastEditAt = useRef(0);
+  const worker = useRef({ lastLocalUpdateAt: 0, unpushed: false });
+  const [isSaving, setIsSaving] = useState(false);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel(SAVE_STATUS_CHANNEL);
+    channel.onmessage = (event: MessageEvent<SaveStatusMessage>) => {
+      if (event.data?.docKey !== docKey) return;
+      worker.current = {
+        lastLocalUpdateAt: event.data.lastLocalUpdateAt,
+        unpushed: event.data.unpushed,
+      };
+    };
+    return () => channel.close();
+  }, [docKey]);
+
+  const isSaved = useCallback(
+    () =>
+      isNoteSaved({
+        now: Date.now(),
+        lastEditAt: lastEditAt.current,
+        workerLastLocalUpdateAt: worker.current.lastLocalUpdateAt,
+        workerUnpushed: worker.current.unpushed,
+      }),
+    [],
+  );
+
+  const waitUntilSaved = useCallback(async (): Promise<boolean> => {
+    if (isSaved()) return true;
+    setIsSaving(true);
+    try {
+      const deadline = Date.now() + SAVE_WAIT_MS;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (isSaved()) return true;
+      }
+      console.warn('NugNotes: gave up waiting for the latest edit to save');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaved]);
+
+  // Mark edits from the student's own input inside the editor (toolbar included).
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const mark = () => {
+      lastEditAt.current = Date.now();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditingKey(e)) mark();
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest('.superdoc-toolbar')) mark();
+    };
+    surface.addEventListener('keydown', onKeyDown, true);
+    surface.addEventListener('paste', mark, true);
+    surface.addEventListener('cut', mark, true);
+    surface.addEventListener('drop', mark, true);
+    surface.addEventListener('pointerup', onPointerUp, true);
+    return () => {
+      surface.removeEventListener('keydown', onKeyDown, true);
+      surface.removeEventListener('paste', mark, true);
+      surface.removeEventListener('cut', mark, true);
+      surface.removeEventListener('drop', mark, true);
+      surface.removeEventListener('pointerup', onPointerUp, true);
+    };
+  });
+
+  // In-app navigation waits for the latest edit to save, then continues.
+  // Closing or reloading the tab can't wait, so it asks instead.
+  useBlocker({
+    shouldBlockFn: async () => {
+      await waitUntilSaved();
+      return false;
+    },
+    enableBeforeUnload: () => !isSaved(),
+  });
+
   // ---- derived copies (plain text + markdown) ----
   const docRef = useRef<DocApi | null>(null);
   const onSnapshotRef = useRef(onSnapshot);
@@ -232,28 +361,29 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
         clearTimeout(extractTimer.current);
         await extract();
       },
+      waitUntilSaved,
       insertMarkdown: async (markdown: string) => {
         const doc = docRef.current;
         if (!doc) throw new Error('The editor is still opening');
+        lastEditAt.current = Date.now();
         // No target: SuperDoc appends at the end of the document.
         await doc.insert({ value: markdown, type: 'markdown' });
         scheduleExtract();
       },
     }),
-    [extract, scheduleExtract],
+    [extract, scheduleExtract, waitUntilSaved],
   );
 
-  // The update toast flushes through here before reloading. Edits live in the
-  // worker's Y.Doc; while the connection is down a reload could lose them, so
-  // report "not safe".
+  // The update toast and "New session" flush through here before the editor
+  // goes away. Report "not safe" if the latest edit didn't reach the server.
   useEffect(
     () =>
       registerPendingSaveFlush(async () => {
         clearTimeout(extractTimer.current);
-        await extract();
-        return connectionRef.current !== 'degraded' && connectionRef.current !== 'failed';
+        const [saved] = await Promise.all([waitUntilSaved(), extract()]);
+        return saved && connectionRef.current !== 'degraded' && connectionRef.current !== 'failed';
       }),
-    [extract],
+    [extract, waitUntilSaved],
   );
 
   useEffect(
@@ -280,7 +410,10 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
   }
 
   return (
-    <div className={`nugnotes-superdoc relative flex min-h-0 flex-col ${className ?? ''}`}>
+    <div
+      ref={surfaceRef}
+      className={`nugnotes-superdoc relative flex min-h-0 flex-col ${className ?? ''}`}
+    >
       <SuperDocEditor
         document={document}
         documentMode="editing"
@@ -306,13 +439,15 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
       />
       <div
         className={`pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-[var(--glass-border)] glass-heavy px-3 py-1 text-xs text-foreground shadow-sm transition-opacity duration-200 ${
-          unsynced ? 'opacity-100' : 'opacity-0'
+          unsynced || isSaving ? 'opacity-100' : 'opacity-0'
         }`}
         aria-live="polite"
       >
         {connection === 'failed'
           ? "Not saved — these notes can't sync right now"
-          : 'Not saved — reconnecting…'}
+          : unsynced
+            ? 'Not saved — reconnecting…'
+            : 'Saving…'}
       </div>
     </div>
   );

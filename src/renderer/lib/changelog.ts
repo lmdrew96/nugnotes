@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.3.1',
+    date: '2026-10-04',
+    title: 'No more lost last words',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Leaving a note right after typing no longer loses your last edit — NugNotes shows “Saving…” for a moment and waits for it.',
+      },
+      {
+        kind: 'improved',
+        text: 'Switching between a session’s tabs keeps your notes open, so coming back is instant.',
+      },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-04',
     title: 'Nugget reads your notes and documents',

@@ -63,12 +63,18 @@ export function attachConvexSync({
   ydoc,
   callbacks,
   fetchBytes = defaultFetchBytes,
+  onSaveStatus,
 }: {
   client: SyncClient;
   docKey: string;
   ydoc: Y.Doc;
   callbacks: SyncCallbacks;
   fetchBytes?: (url: string) => Promise<Uint8Array>;
+  /**
+   * Reports whether local edits are still waiting to reach Convex (NugNotes:
+   * the page holds navigation on it — see src/superdoc/save-status.ts).
+   */
+  onSaveStatus?: (status: { unpushed: boolean; lastLocalUpdateAt: number }) => void;
 }): SyncHandle {
   let destroyed = false;
   let closing = false; // destroy() in progress: flush, but schedule nothing new
@@ -155,6 +161,16 @@ export function attachConvexSync({
   let pushing: Promise<void> | null = null;
   let pushTimer = false;
 
+  // ---- save status (NugNotes) ----
+  let lastLocalUpdateAt = 0;
+  // A batch the server refused for good (too large / no room) is not saved.
+  let refused = false;
+  const reportSaveStatus = () =>
+    onSaveStatus?.({
+      unpushed: refused || pending.length > 0 || pushing !== null,
+      lastLocalUpdateAt,
+    });
+
   const flush = async (): Promise<void> => {
     while (pushing) await pushing;
     if (pending.length === 0) return;
@@ -167,6 +183,7 @@ export function attachConvexSync({
         (err: unknown) => {
           const code = errorCode(err);
           if (code === 'UPDATE_TOO_LARGE' || code === 'NO_ROOM') {
+            refused = true;
             callbacks.onFailed({ stage: 'push', code });
             return;
           }
@@ -178,6 +195,7 @@ export function attachConvexSync({
       )
       .finally(() => {
         pushing = null;
+        reportSaveStatus();
       });
     await pushing;
   };
@@ -194,6 +212,8 @@ export function attachConvexSync({
   const onLocalUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === REMOTE) return;
     pending.push(update);
+    lastLocalUpdateAt = Date.now();
+    reportSaveStatus();
     schedulePush();
   };
   ydoc.on('update', onLocalUpdate);

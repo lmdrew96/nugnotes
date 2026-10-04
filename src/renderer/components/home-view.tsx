@@ -15,6 +15,7 @@ import { useSessionContext } from '@/contexts/session-context';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useStudySettings } from '@/hooks/use-productivity';
 import { useSessionMutations } from '@/hooks/use-sessions';
+import { flushPendingSaves } from '@/lib/pending-save';
 import { cn } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 import { BookOpen, FilePlus, FileText, SlidersHorizontal } from 'lucide-react';
@@ -100,7 +101,12 @@ export function HomeView() {
     [sessionId, updateSession],
   );
 
-  const startNewSession = () => {
+  const startNewSession = async () => {
+    // The editor is about to unmount: let its latest edit reach the server first.
+    if (!(await flushPendingSaves())) {
+      toast.error("Your last edit hasn't saved yet. Try again in a moment.");
+      return;
+    }
     currentPage.current += 1;
     pendingCreate.current = null;
     setSessionId(null);
@@ -118,7 +124,12 @@ export function HomeView() {
       <div className="flex flex-col gap-2 rounded-xl glass p-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium text-foreground">Session</span>
-          <Button size="sm" variant="ghost" className="h-7 gap-1.5" onClick={startNewSession}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1.5"
+            onClick={() => void startNewSession()}
+          >
             <FilePlus className="h-3.5 w-3.5" />
             New session
           </Button>
