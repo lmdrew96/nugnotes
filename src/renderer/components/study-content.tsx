@@ -8,31 +8,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useStudySettings } from '@/hooks/use-productivity';
-import { CitationMark } from '@/lib/citation-mark';
-import { DraggableImage } from '@/lib/draggable-image-extension';
-import { ExcalidrawNode } from '@/lib/excalidraw-extension';
-import { FontSize } from '@/lib/font-size-extension';
 import { renderMarkdown } from '@/lib/render-markdown';
-import { TextBox } from '@/lib/textbox-extension';
-import CodeBlock from '@tiptap/extension-code-block';
-import Color from '@tiptap/extension-color';
-import FontFamily from '@tiptap/extension-font-family';
-import Highlight from '@tiptap/extension-highlight';
-import Link from '@tiptap/extension-link';
-import Subscript from '@tiptap/extension-subscript';
-import Superscript from '@tiptap/extension-superscript';
-import { Table } from '@tiptap/extension-table';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
-import { TableRow } from '@tiptap/extension-table-row';
-import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
-import Underline from '@tiptap/extension-underline';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import { useMutation } from 'convex/react';
 import { BookOpen, Cat, Check, FileImage, FileText, Pencil, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -123,64 +102,7 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   const hasNuggetNotes = !!recording.nuggetNotes && recording.nuggetNotes.length > 0;
 
   // Viewers of someone else's session with no notes land on the document instead.
-  const defaultTab = readOnly && !recording.notes && hasDocumentText ? 'document' : 'notes';
-
-  // Read-only TipTap editor for rendering someone else's notes
-  const readOnlyExtensions = useMemo(
-    () => [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        codeBlock: false,
-      }),
-      Underline,
-      Superscript,
-      Subscript,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Highlight.configure({ multicolor: true }),
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableCell,
-      TableHeader,
-      Link.configure({
-        openOnClick: true,
-        HTMLAttributes: { class: 'text-primary underline cursor-pointer' },
-      }),
-      CodeBlock,
-      Color,
-      TextStyle,
-      FontFamily,
-      FontSize,
-      DraggableImage,
-      TextBox,
-      ExcalidrawNode,
-      CitationMark,
-    ],
-    [],
-  );
-
-  const readOnlyEditor = useEditor({
-    extensions: readOnlyExtensions,
-    content: '',
-    editable: false,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm max-w-none text-foreground text-xs leading-relaxed',
-      },
-    },
-  });
-
-  // Load notes content into read-only editor
-  useEffect(() => {
-    if (readOnlyEditor && recording.notes) {
-      try {
-        const content = JSON.parse(recording.notes);
-        readOnlyEditor.commands.setContent(content);
-      } catch {
-        // Fallback: render as plain text
-        readOnlyEditor.commands.setContent(`<p>${recording.notes}</p>`);
-      }
-    }
-  }, [readOnlyEditor, recording.notes]);
+  const defaultTab = readOnly && !recording.notesMarkdown && hasDocumentText ? 'document' : 'notes';
 
   return (
     <div className="h-full flex flex-col">
@@ -402,8 +324,10 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
         <TabsContent value="notes" className="h-[calc(100%-2rem)] mt-0">
           {readOnly ? (
             <ScrollArea className="h-full rounded-xl glass p-4">
-              {recording.notes ? (
-                <EditorContent editor={readOnlyEditor} />
+              {recording.notesMarkdown ? (
+                <div className="space-y-0.5 text-xs leading-relaxed text-foreground/90">
+                  {renderMarkdown(recording.notesMarkdown)}
+                </div>
               ) : (
                 <p className="whitespace-pre-wrap leading-relaxed text-xs text-foreground/90">
                   No notes yet

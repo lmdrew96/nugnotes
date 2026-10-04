@@ -62,7 +62,7 @@ export function SharedSessionView() {
       day: 'numeric',
       year: 'numeric',
     }),
-    notes: session.notes || '',
+    notesMarkdown: session.notesMarkdown || '',
     lectureType: session.lectureType,
     course: session.course,
     nuggetNotes: session.nuggetNotes,

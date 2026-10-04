@@ -6,7 +6,7 @@ NugNotes is a clean-break fork of ScribeCat-v3 with everything audio removed. Se
 
 ## Stack
 
-Vite + React + TypeScript on the front end, Convex for the backend and database, Clerk for auth, Cloudflare R2 for uploaded files, and Claude for the AI features. The built app is served as static assets from Cloudflare Workers (`wrangler.jsonc`).
+Vite + React + TypeScript on the front end, Convex for the backend and database, Clerk for auth, Cloudflare R2 for uploaded files, and Claude for the AI features. Notes are edited in [SuperDoc](https://superdoc.dev) (AGPL-3.0), synced through Convex by a provider in SuperDoc's collaboration worker (`src/superdoc/`, `convex/ydoc.ts`); `pnpm superdoc:assets` builds the worker, fonts and template into `public/superdoc/` (run automatically by `dev` and `build`). The built app is served as static assets from Cloudflare Workers (`wrangler.jsonc`).
 
 ## Running locally
 
@@ -28,3 +28,7 @@ Copy `.env.example` to `.env.local` for the client variables. Server variables (
 | `pnpm compile` | Type-check only |
 | `pnpm test` | Unit tests (Vitest) |
 | `pnpm lint` | Biome |
+
+## License
+
+AGPL-3.0 — see [LICENSE](../LICENSE). The notes editor, SuperDoc, is AGPL and depends on the separately licensed `@superdoc/docx-engine`.

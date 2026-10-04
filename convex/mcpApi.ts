@@ -137,7 +137,7 @@ export const listSessionsInternal = internalQuery({
         course: s.course ?? null,
         lectureType: s.lectureType ?? null,
         createdAt: new Date(s.createdAt).toISOString(),
-        hasNotes: !!(s.notesPlainText ?? s.notes),
+        hasNotes: !!s.notesPlainText,
       })),
     );
   },
@@ -210,7 +210,7 @@ export const searchSessionsInternal = internalQuery({
         course: s.course ?? null,
         lectureType: s.lectureType ?? null,
         createdAt: new Date(s.createdAt).toISOString(),
-        hasNotes: !!(s.notesPlainText ?? s.notes),
+        hasNotes: !!s.notesPlainText,
       })),
     );
   },

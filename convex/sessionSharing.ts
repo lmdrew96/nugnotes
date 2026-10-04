@@ -6,6 +6,8 @@ import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { checkNotBlocked, sortParticipantIds, verifyFriendship } from './messagingHelpers';
+import { copyRoomData } from './ydoc';
+import { sessionDocKey } from './ydocKeys';
 
 // ─── Queries ─────────────────────────────────────────────────
 
@@ -75,21 +77,6 @@ export const getSharedSession = query({
       .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
       .unique();
 
-    let notes = notesDoc?.content ?? session.notes;
-    const notesPlainText = notesDoc?.plainText ?? session.notesPlainText;
-
-    if (!notes && notesPlainText) {
-      const paragraphs = notesPlainText.split('\n').filter(Boolean);
-      const tiptapDoc = {
-        type: 'doc',
-        content: paragraphs.map((text: string) => ({
-          type: 'paragraph',
-          content: [{ type: 'text', text }],
-        })),
-      };
-      notes = JSON.stringify(tiptapDoc);
-    }
-
     // Get owner profile
     const ownerProfile = await ctx.db
       .query('userProfiles')
@@ -98,8 +85,8 @@ export const getSharedSession = query({
 
     return {
       ...session,
-      notes,
-      notesPlainText,
+      notesPlainText: notesDoc?.plainText,
+      notesMarkdown: notesDoc?.markdown,
       owner: {
         userId: session.userId,
         displayName: ownerProfile?.displayName ?? 'Unknown',
@@ -316,11 +303,12 @@ export const copyToLibrary = mutation({
       await ctx.db.insert('sessionNotes', {
         sessionId: newSessionId,
         userId,
-        content: notesDoc.content,
         plainText: notesDoc.plainText,
+        markdown: notesDoc.markdown,
         updatedAt: now,
       });
     }
+    await copyRoomData(ctx, sessionDocKey(args.sessionId), sessionDocKey(newSessionId), userId);
 
     return newSessionId;
   },

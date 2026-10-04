@@ -115,6 +115,8 @@ Shared helpers worth knowing before writing new code:
 
 All AI endpoints use **Haiku 4.5** via `AI_MODEL` in `convex/config.ts`. Don't hardcode a model, and don't reach for Opus-tier by default.
 
+**Notes editor:** SuperDoc (AGPL; its `@superdoc/docx-engine` core is proprietary and its license bans AI analysis of engine internals — debug it from the outside only). Each note is a Y.Doc stored in Convex as an update log (`convex/ydoc.ts`, keyed `session:<id>` / `room:<id>`), synced by a provider compiled into SuperDoc's collaboration worker (`src/superdoc/`). `components/notes-editor.tsx` mounts it and saves plain-text + markdown copies (for the AI and read-only views) about a second after edits settle.
+
 The AI layer was built around lecture transcripts in ScribeCat; moving it onto typed notes, handwriting and documents is in progress (see the spec). Full note generation runs via `convex/ai.ts`, uses lecture-type-aware prompts from `convex/prompts.ts`, and outputs markdown converted by `lib/markdown-to-tiptap.ts`.
 
 ---

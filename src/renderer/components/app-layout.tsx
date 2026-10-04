@@ -26,7 +26,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <NuggetChat
-        notes={session?.notes}
+        notes={session?.notesPlainText}
         sessionId={activeSessionId ?? undefined}
         lectureType={session?.lectureType}
         nuggetNotes={nuggetNotesText}

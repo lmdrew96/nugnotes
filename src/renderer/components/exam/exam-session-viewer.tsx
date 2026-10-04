@@ -30,7 +30,7 @@ export function ExamSessionViewer({
     open ? sessionId : null,
   );
 
-  const hasNotes = !!(content?.notesPlainText || content?.notes);
+  const hasNotes = !!(content?.notesMarkdown || content?.notesPlainText);
   const hasNuggetNotes = !!(content?.nuggetNotes && content.nuggetNotes.length > 0);
   const hasDocumentText = !!content?.documentText;
 
@@ -110,13 +110,7 @@ export function ExamSessionViewer({
                 <TabsContent value="notes" className="h-full m-0">
                   <ScrollArea className="h-[50vh]">
                     <div className="pr-4 text-sm text-foreground space-y-1">
-                      {content.notesPlainText ? (
-                        renderMarkdown(content.notesPlainText)
-                      ) : (
-                        <p className="text-muted-foreground italic">
-                          Notes available in rich text format only.
-                        </p>
-                      )}
+                      {renderMarkdown(content.notesMarkdown || content.notesPlainText || '')}
                     </div>
                   </ScrollArea>
                 </TabsContent>

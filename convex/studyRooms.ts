@@ -120,7 +120,6 @@ export const getRoom = query({
           displayName: profile?.displayName ?? 'Unknown',
           username: profile?.username ?? 'unknown',
           avatarUrl: profile?.avatarUrl,
-          notesCursor: member.notesCursor ?? null,
         };
       }),
     );
@@ -203,28 +202,13 @@ export const getRoomPinnedSession = query({
       .withIndex('by_session', (q) => q.eq('sessionId', pinnedId))
       .unique();
 
-    let notes = notesDoc?.content ?? session.notes;
-    const notesPlainText = notesDoc?.plainText ?? session.notesPlainText;
-
-    if (!notes && notesPlainText) {
-      const paragraphs = notesPlainText.split('\n').filter(Boolean);
-      const tiptapDoc = {
-        type: 'doc',
-        content: paragraphs.map((text: string) => ({
-          type: 'paragraph',
-          content: [{ type: 'text', text }],
-        })),
-      };
-      notes = JSON.stringify(tiptapDoc);
-    }
-
     // Get owner profile
     const ownerProfile = await getProfileForUser(ctx, session.userId);
 
     return {
       ...session,
-      notes,
-      notesPlainText,
+      notesPlainText: notesDoc?.plainText,
+      notesMarkdown: notesDoc?.markdown,
       owner: {
         userId: session.userId,
         displayName: ownerProfile?.displayName ?? 'Unknown',

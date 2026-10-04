@@ -30,7 +30,6 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  Merge,
   MoreHorizontal,
   PanelLeftClose,
   RotateCcw,
@@ -50,7 +49,6 @@ interface RecordingsSidebarProps {
   onRestore: (recordingId: string) => void;
   onPermanentDelete: (recordingId: string) => void;
   onShare?: (recordingId: string) => void;
-  onMerge?: (recordingId: string) => void;
   onCollapse?: () => void;
 }
 
@@ -78,8 +76,6 @@ function SessionItem({
   viewingTrash,
   onSelect,
   onShare,
-  onMerge,
-  showMerge,
   onDeleteRequest,
 }: {
   recording: SessionSummary;
@@ -87,8 +83,6 @@ function SessionItem({
   viewingTrash: boolean;
   onSelect: (r: SessionSummary) => void;
   onShare?: (id: string) => void;
-  onMerge?: (id: string) => void;
-  showMerge: boolean;
   onDeleteRequest: (type: 'delete' | 'permanent-delete') => void;
 }) {
   return (
@@ -167,17 +161,6 @@ function SessionItem({
                     Share
                   </DropdownMenuItem>
                 )}
-                {onMerge && showMerge && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMerge(recording.id);
-                    }}
-                  >
-                    <Merge className="h-3.5 w-3.5" />
-                    Merge sessions…
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -206,7 +189,6 @@ export function RecordingsSidebar({
   onDelete,
   onRestore,
   onShare,
-  onMerge,
   onPermanentDelete,
   onCollapse,
 }: RecordingsSidebarProps) {
@@ -323,8 +305,6 @@ export function RecordingsSidebar({
                   viewingTrash
                   onSelect={onSelect}
                   onShare={onShare}
-                  onMerge={onMerge}
-                  showMerge={recordings.length > 1}
                   onDeleteRequest={(type) => {
                     if (type === 'delete') {
                       onRestore(recording.id);
@@ -357,8 +337,6 @@ export function RecordingsSidebar({
                       viewingTrash={false}
                       onSelect={onSelect}
                       onShare={onShare}
-                      onMerge={onMerge}
-                      showMerge={recordings.length > 1}
                       onDeleteRequest={(type) => setConfirmAction({ type, recording })}
                     />
                   ))}
@@ -405,8 +383,6 @@ export function RecordingsSidebar({
                           viewingTrash={false}
                           onSelect={onSelect}
                           onShare={onShare}
-                          onMerge={onMerge}
-                          showMerge={recordings.length > 1}
                           onDeleteRequest={(type) => setConfirmAction({ type, recording })}
                         />
                       ))}

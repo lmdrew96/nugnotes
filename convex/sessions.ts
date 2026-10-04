@@ -1,7 +1,8 @@
 import { v } from 'convex/values';
-import type { Doc } from './_generated/dataModel';
 import { internalMutation, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { deleteRoomData } from './ydoc';
+import { sessionDocKey } from './ydocKeys';
 
 // List all sessions for the authenticated user (excluding deleted)
 export const list = query({
@@ -52,30 +53,17 @@ export const get = query({
     const session = await ctx.db.get(args.id);
     if (!session || session.userId !== identity.subject) return null;
 
-    // Join notes from separate table (fallback to legacy fields during migration)
+    // Join the notes' plain-text and markdown copies (the note itself is a SuperDoc doc — convex/ydoc.ts)
     const notesDoc = await ctx.db
       .query('sessionNotes')
       .withIndex('by_session', (q) => q.eq('sessionId', args.id))
       .unique();
 
-    // Resolve notes: prefer content (TipTap JSON), fall back to wrapping plainText
-    let notes = notesDoc?.content ?? session.notes;
-    const notesPlainText = notesDoc?.plainText ?? session.notesPlainText;
-
-    if (!notes && notesPlainText) {
-      // Content was lost but plainText survived — wrap it as minimal TipTap JSON
-      const paragraphs = notesPlainText.split('\n').filter(Boolean);
-      const tiptapDoc = {
-        type: 'doc',
-        content: paragraphs.map((text: string) => ({
-          type: 'paragraph',
-          content: [{ type: 'text', text }],
-        })),
-      };
-      notes = JSON.stringify(tiptapDoc);
-    }
-
-    return { ...session, notes, notesPlainText };
+    return {
+      ...session,
+      notesPlainText: notesDoc?.plainText,
+      notesMarkdown: notesDoc?.markdown,
+    };
   },
 });
 
@@ -101,15 +89,15 @@ export const create = mutation({
   },
 });
 
-// Update session fields (notes are routed to sessionNotes table)
+// Update session fields (the notes' plain-text/markdown copies are routed to sessionNotes)
 export const update = mutation({
   args: {
     id: v.id('sessions'),
     title: v.optional(v.string()),
     lectureType: v.optional(v.string()),
     course: v.optional(v.string()),
-    notes: v.optional(v.string()),
     notesPlainText: v.optional(v.string()),
+    notesMarkdown: v.optional(v.string()),
     nuggetNotes: v.optional(
       v.array(
         v.object({
@@ -122,7 +110,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
-    const { id, notes, notesPlainText, ...otherUpdates } = args;
+    const { id, notesPlainText, notesMarkdown, ...otherUpdates } = args;
 
     // Being signed in is not enough — the session has to be yours.
     const session = await ctx.db.get(id);
@@ -131,7 +119,7 @@ export const update = mutation({
     }
 
     // Route notes to separate sessionNotes table
-    if (notes !== undefined || notesPlainText !== undefined) {
+    if (notesPlainText !== undefined || notesMarkdown !== undefined) {
       const existing = await ctx.db
         .query('sessionNotes')
         .withIndex('by_session', (q) => q.eq('sessionId', id))
@@ -139,15 +127,15 @@ export const update = mutation({
 
       if (existing) {
         const notesPatch: Record<string, string | number> = { updatedAt: Date.now() };
-        if (notes !== undefined) notesPatch.content = notes;
         if (notesPlainText !== undefined) notesPatch.plainText = notesPlainText;
+        if (notesMarkdown !== undefined) notesPatch.markdown = notesMarkdown;
         await ctx.db.patch(existing._id, notesPatch);
       } else {
         await ctx.db.insert('sessionNotes', {
           sessionId: id,
           userId,
-          content: notes,
           plainText: notesPlainText,
+          markdown: notesMarkdown,
           updatedAt: Date.now(),
         });
       }
@@ -215,7 +203,7 @@ export const restore = mutation({
   },
 });
 
-// Permanently delete a session (cascades to sessionNotes)
+// Permanently delete a session (cascades to sessionNotes and its SuperDoc data)
 export const permanentDelete = mutation({
   args: { id: v.id('sessions') },
   handler: async (ctx, args) => {
@@ -231,6 +219,7 @@ export const permanentDelete = mutation({
     if (notesDoc) {
       await ctx.db.delete(notesDoc._id);
     }
+    await deleteRoomData(ctx, sessionDocKey(args.id));
 
     return await ctx.db.delete(args.id);
   },
@@ -292,6 +281,7 @@ export const cleanupOldDeleted = internalMutation({
         if (notesDoc) {
           await ctx.db.delete(notesDoc._id);
         }
+        await deleteRoomData(ctx, sessionDocKey(session._id));
 
         await ctx.db.delete(session._id);
         deletedCount++;
@@ -300,131 +290,5 @@ export const cleanupOldDeleted = internalMutation({
 
     console.log(`Cleaned up ${deletedCount} sessions older than 30 days`);
     return { deletedCount };
-  },
-});
-
-// Merge multiple session fragments into one.
-// primaryId is the session whose _id is kept; secondaryIds are soft-deleted after merge.
-// All sessions are sorted chronologically before merging, so content reads in order
-// regardless of which fragment the user selected as "primary."
-export const mergeSessions = mutation({
-  args: {
-    primaryId: v.id('sessions'),
-    secondaryIds: v.array(v.id('sessions')),
-    newTitle: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx);
-
-    if (args.secondaryIds.length === 0) throw new Error('No secondary sessions specified');
-
-    const primary = await ctx.db.get(args.primaryId);
-    if (!primary || primary.userId !== userId || primary.isDeleted) {
-      throw new Error('Primary session not found');
-    }
-
-    const secondaries: Doc<'sessions'>[] = [];
-    for (const id of args.secondaryIds) {
-      const s = await ctx.db.get(id);
-      if (!s || s.userId !== userId || s.isDeleted) {
-        throw new Error(`Session not found: ${id}`);
-      }
-      secondaries.push(s);
-    }
-
-    // Sort all fragments chronologically so content reads in order
-    const allSessions = [primary, ...secondaries].sort((a, b) => a.createdAt - b.createdAt);
-
-    const allNuggetNotes: NonNullable<Doc<'sessions'>['nuggetNotes']> = [];
-    const allDocumentTexts: string[] = [];
-    const allDocumentStorageIds: string[] = [];
-
-    for (const session of allSessions) {
-      allNuggetNotes.push(...(session.nuggetNotes ?? []));
-      if (session.documentText) allDocumentTexts.push(session.documentText);
-      allDocumentStorageIds.push(...(session.documentStorageIds ?? []));
-    }
-
-    // Fetch sessionNotes in chronological order, then merge TipTap JSON content arrays
-    const notesDocs: (Doc<'sessionNotes'> | null)[] = [];
-    for (const session of allSessions) {
-      const notesDoc = await ctx.db
-        .query('sessionNotes')
-        .withIndex('by_session', (q) => q.eq('sessionId', session._id))
-        .unique();
-      notesDocs.push(notesDoc);
-    }
-
-    const hasAnyNotes = notesDocs.some((d) => d?.content || d?.plainText);
-    if (hasAnyNotes) {
-      const combinedContent: unknown[] = [];
-      let combinedPlainText = '';
-      let first = true;
-
-      for (const notesDoc of notesDocs) {
-        if (!notesDoc?.content && !notesDoc?.plainText) continue;
-
-        if (!first) {
-          combinedContent.push({ type: 'horizontalRule' });
-          combinedPlainText += '\n\n---\n\n';
-        }
-
-        if (notesDoc.content) {
-          try {
-            const parsed = JSON.parse(notesDoc.content) as { content?: unknown[] };
-            combinedContent.push(...(parsed.content ?? []));
-          } catch {
-            combinedContent.push({
-              type: 'paragraph',
-              content: [{ type: 'text', text: notesDoc.content }],
-            });
-          }
-        }
-
-        if (notesDoc.plainText) combinedPlainText += notesDoc.plainText;
-        first = false;
-      }
-
-      const mergedJson = JSON.stringify({ type: 'doc', content: combinedContent });
-      const primaryIdx = allSessions.findIndex((s) => s._id === args.primaryId);
-      const primaryNotesDoc = primaryIdx >= 0 ? notesDocs[primaryIdx] : null;
-
-      if (primaryNotesDoc) {
-        await ctx.db.patch(primaryNotesDoc._id, {
-          content: mergedJson,
-          plainText: combinedPlainText,
-          updatedAt: Date.now(),
-        });
-      } else {
-        await ctx.db.insert('sessionNotes', {
-          sessionId: args.primaryId,
-          userId,
-          content: mergedJson,
-          plainText: combinedPlainText,
-          updatedAt: Date.now(),
-        });
-      }
-    }
-
-    // Update the primary session with combined data
-    await ctx.db.patch(args.primaryId, {
-      title: args.newTitle ?? primary.title,
-      nuggetNotes: allNuggetNotes.length > 0 ? allNuggetNotes : undefined,
-      documentText: allDocumentTexts.length > 0 ? allDocumentTexts.join('\n\n---\n\n') : undefined,
-      documentStorageIds: allDocumentStorageIds.length > 0 ? allDocumentStorageIds : undefined,
-      updatedAt: Date.now(),
-    });
-
-    // Soft-delete secondary sessions
-    const now = Date.now();
-    for (const secondary of secondaries) {
-      await ctx.db.patch(secondary._id, {
-        isDeleted: true,
-        deletedAt: now,
-        updatedAt: now,
-      });
-    }
-
-    return args.primaryId;
   },
 });

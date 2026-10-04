@@ -66,7 +66,6 @@ export function RoomView({ roomId }: RoomViewProps) {
   const currentMember = room.members.find((m) => m.userId === currentUserId);
   const hasJoined = currentMember?.hasJoined ?? false;
   const onlineCount = room.members.filter((m) => m.isOnline).length;
-  const myDisplayName = currentMember?.displayName ?? user?.fullName ?? 'Someone';
 
   const handleJoin = async () => {
     try {
@@ -103,7 +102,7 @@ export function RoomView({ roomId }: RoomViewProps) {
           day: 'numeric',
           year: 'numeric',
         }),
-        notes: pinnedSession.notes || '',
+        notesMarkdown: pinnedSession.notesMarkdown || '',
         lectureType: pinnedSession.lectureType,
         nuggetNotes: pinnedSession.nuggetNotes,
         documentText: pinnedSession.documentText,
@@ -287,14 +286,7 @@ export function RoomView({ roomId }: RoomViewProps) {
                 ))}
 
               {/* Notes tab */}
-              {activeTab === 'notes' && (
-                <RoomNotesEditor
-                  roomId={roomId}
-                  currentUserId={currentUserId}
-                  currentUserName={myDisplayName}
-                  members={room.members}
-                />
-              )}
+              {activeTab === 'notes' && <RoomNotesEditor roomId={roomId} />}
             </>
           )}
         </div>

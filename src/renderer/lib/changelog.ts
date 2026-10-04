@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.0',
+    date: '2026-10-04',
+    title: 'A new notes editor',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Notes now use a Word-style editor with fonts, tables, images and real lists.',
+      },
+      {
+        kind: 'added',
+        text: 'Study room notes are live: everyone in the room edits the same page at once.',
+      },
+      {
+        kind: 'improved',
+        text: 'Generated notes are added to the end of your notes instead of replacing anything.',
+      },
+      {
+        kind: 'improved',
+        text: 'Your notes save as you type, and you are told if they ever stop syncing.',
+      },
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-10-04',
     title: 'Hello, NugNotes',

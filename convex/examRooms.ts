@@ -238,9 +238,6 @@ export const getExamRoomSessionContent = query({
       .withIndex('by_session', (q) => q.eq('sessionId', args.sessionId))
       .unique();
 
-    const notes = notesDoc?.content ?? session.notes;
-    const notesPlainText = notesDoc?.plainText ?? session.notesPlainText;
-
     // Get owner profile
     const ownerProfile = await getProfileForUser(ctx, session.userId);
 
@@ -250,8 +247,8 @@ export const getExamRoomSessionContent = query({
     return {
       sessionId: session._id,
       title: session.title,
-      notes,
-      notesPlainText,
+      notesPlainText: notesDoc?.plainText,
+      notesMarkdown: notesDoc?.markdown,
       lectureType: session.lectureType,
       course: session.course,
       nuggetNotes: session.nuggetNotes,

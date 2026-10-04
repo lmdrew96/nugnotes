@@ -8,7 +8,6 @@ export default defineSchema({
     title: v.string(),
     lectureType: v.optional(v.string()),
     course: v.optional(v.string()),
-    notes: v.optional(v.string()),
     notesPlainText: v.optional(v.string()),
     nuggetNotes: v.optional(
       v.array(
@@ -37,8 +36,9 @@ export default defineSchema({
   sessionNotes: defineTable({
     sessionId: v.id('sessions'),
     userId: v.string(),
-    content: v.optional(v.string()),
     plainText: v.optional(v.string()),
+    // Markdown copy of the SuperDoc note, for read-only views.
+    markdown: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index('by_session', ['sessionId'])
@@ -239,7 +239,6 @@ export default defineSchema({
     hasJoined: v.boolean(), // false = invited but hasn't opened room yet
     lastSeenAt: v.number(),
     createdAt: v.number(),
-    notesCursor: v.optional(v.string()), // JSON: {from: number, to: number} — cursor position in collab notes
   })
     .index('by_room', ['roomId'])
     .index('by_user', ['userId'])
@@ -275,15 +274,6 @@ export default defineSchema({
     .index('by_room', ['roomId'])
     .index('by_room_active', ['roomId', 'status'])
     .index('by_exam_room', ['examRoomId']),
-
-  // Collaborative notes per study room
-  roomNotes: defineTable({
-    roomId: v.id('studyRooms'),
-    content: v.string(), // TipTap JSON stringified
-    updatedAt: v.number(),
-    updatedBy: v.string(),
-    updatedByName: v.string(),
-  }).index('by_room', ['roomId']),
 
   // Study game players (one row per player per game)
   studyGamePlayers: defineTable({
@@ -374,6 +364,31 @@ export default defineSchema({
     ),
     updatedAt: v.number(),
   }).index('by_room_user', ['examRoomId', 'userId']),
+
+  // SuperDoc persistence (convex/ydoc.ts). One row per Yjs update pushed by an
+  // editor's collaboration worker, plus compacted snapshots that replace a run
+  // of them. Exactly one of `update` (inline bytes) or `storageId` (a snapshot
+  // too big to hold inline) is set. Keyed by DocKey (convex/ydocKeys.ts).
+  ydocUpdates: defineTable({
+    docKey: v.string(),
+    update: v.optional(v.bytes()),
+    storageId: v.optional(v.id('_storage')),
+    author: v.string(), // identity.subject, or "compaction" for a snapshot
+  }).index('by_doc', ['docKey']),
+
+  // One row per document that has a SuperDoc room. Decides create-vs-join
+  // atomically (ydoc.claimRoom) and tracks when to compact.
+  ydocRooms: defineTable({
+    docKey: v.string(),
+    claimedBy: v.string(), // identity.subject of whoever claimed the room
+    // Random per-editor token of the claim. Lets the same editor re-claim its
+    // own still-empty room after a remount (React StrictMode mounts twice in
+    // dev) without another tab getting "create" too.
+    claimToken: v.optional(v.string()),
+    claimedAt: v.number(),
+    pendingUpdates: v.number(), // update rows since the last compaction
+    compactionScheduled: v.boolean(),
+  }).index('by_doc', ['docKey']),
 
   // API keys for MCP server and third-party integrations
   apiKeys: defineTable({

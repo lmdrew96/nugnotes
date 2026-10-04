@@ -34,7 +34,6 @@ import type * as productivity from "../productivity.js";
 import type * as prompts from "../prompts.js";
 import type * as r2 from "../r2.js";
 import type * as reportBug from "../reportBug.js";
-import type * as roomNotes from "../roomNotes.js";
 import type * as sessionSharing from "../sessionSharing.js";
 import type * as sessions from "../sessions.js";
 import type * as studyGames from "../studyGames.js";
@@ -43,6 +42,8 @@ import type * as studyToolPrompts from "../studyToolPrompts.js";
 import type * as studyTools from "../studyTools.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as weakSpots from "../weakSpots.js";
+import type * as ydoc from "../ydoc.js";
+import type * as ydocKeys from "../ydocKeys.js";
 
 import type {
   ApiFromModules,
@@ -77,7 +78,6 @@ declare const fullApi: ApiFromModules<{
   prompts: typeof prompts;
   r2: typeof r2;
   reportBug: typeof reportBug;
-  roomNotes: typeof roomNotes;
   sessionSharing: typeof sessionSharing;
   sessions: typeof sessions;
   studyGames: typeof studyGames;
@@ -86,6 +86,8 @@ declare const fullApi: ApiFromModules<{
   studyTools: typeof studyTools;
   userProfiles: typeof userProfiles;
   weakSpots: typeof weakSpots;
+  ydoc: typeof ydoc;
+  ydocKeys: typeof ydocKeys;
 }>;
 
 /**

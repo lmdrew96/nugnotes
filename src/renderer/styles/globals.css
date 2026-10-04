@@ -840,165 +840,101 @@
   --font-color-8: #ad1457;
 }
 
-/* TipTap Editor Styles */
-.ProseMirror {
-  outline: none;
-  min-height: 100%;
-  font-size: 12px;
-}
+/* ============================================================ */
+/* SuperDoc notes editor (ported from Folio)                    */
+/* ============================================================ */
 
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: var(--muted-foreground);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
+/* SuperDoc themes itself through --sd-* custom properties declared on :root.
+   `html:root` outranks that, and every value reads a NugNotes theme token, so
+   the editor follows the theme switch like the rest of the app. Its menus are
+   attached to <body> (outside .nugnotes-superdoc), which is why these live on
+   the root rather than on the editor wrapper. */
+html:root {
+  --sd-surface-canvas: transparent;
+  --sd-layout-page-bg: var(--card);
+  --sd-surface-page: var(--card);
+  --sd-ui-bg: var(--popover);
+  --sd-ui-toolbar-bg: var(--popover);
+  --sd-ui-surface-bg: var(--popover);
+  --sd-ui-dropdown-bg: var(--popover);
+  --sd-ui-text: var(--foreground);
+  --sd-ui-toolbar-button-text: var(--foreground);
+  --sd-ui-dropdown-text: var(--foreground);
+  --sd-ui-dropdown-hover-text: var(--foreground);
+  --sd-ui-text-muted: color-mix(in srgb, var(--foreground) 55%, transparent);
+  --sd-ui-border: var(--border);
+  --sd-ui-dropdown-border: var(--border);
+  --sd-ui-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --sd-ui-dropdown-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --sd-ui-toolbar-button-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --sd-ui-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --sd-ui-toolbar-button-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --sd-ui-dropdown-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --sd-ui-font-family: var(--font-sans);
 }
-
-/* Active toolbar buttons */
-button[data-active="true"] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-/* TipTap heading styles */
-.ProseMirror h1 {
-  font-size: 2em;
-  font-weight: bold;
-  margin-top: 0.67em;
-  margin-bottom: 0.67em;
-}
-
-.ProseMirror h2 {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin-top: 0.83em;
-  margin-bottom: 0.83em;
-}
-
-.ProseMirror h3 {
-  font-size: 1.17em;
-  font-weight: bold;
-  margin-top: 1em;
-  margin-bottom: 1em;
-}
-
-/* TipTap list styles */
-.ProseMirror ul,
-.ProseMirror ol {
-  padding-left: 1.5em;
-  margin: 1em 0;
-}
-
-.ProseMirror ul {
-  list-style-type: disc;
-}
-
-.ProseMirror ol {
-  list-style-type: decimal;
-}
-
-.ProseMirror li {
-  margin: 0.25em 0;
-}
-
-/* TipTap blockquote styles */
-.ProseMirror blockquote {
-  border-left: 4px solid var(--primary);
-  padding-left: 1em;
-  margin: 1em 0;
-  font-style: italic;
-  color: var(--muted-foreground);
-}
-
-/* TipTap code block styles */
-.ProseMirror pre {
-  background: var(--glass-bg-light);
-  backdrop-filter: blur(var(--glass-blur-light));
-  border: 1px solid var(--glass-border);
-  border-radius: 0.5rem;
+.nugnotes-superdoc {
   color: var(--foreground);
-  font-family: "JetBrains Mono", monospace;
-  padding: 0.75rem 1rem;
-  margin: 1em 0;
 }
 
-.ProseMirror code {
-  background: var(--glass-bg-light);
-  border-radius: 0.25rem;
-  color: var(--foreground);
-  font-family: "JetBrains Mono", monospace;
-  padding: 0.2em 0.4em;
+/* SuperDoc paints default-coloured ("auto") text with an inline
+   `color: rgb(0, 0, 0)` that no variable reaches. Map exactly that to the
+   theme's text colour — most NugNotes themes are dark. Text the note colours on
+   purpose (links, red, …) keeps its colour. */
+.nugnotes-superdoc [style*="color: rgb(0, 0, 0)"] {
+  color: var(--foreground) !important;
+}
+/* Highlighted text keeps dark ink in every theme — light ink on a bright
+   highlight would be unreadable. */
+.nugnotes-superdoc [style*="background-color"] {
+  color: #1a1a1a !important;
 }
 
-/* TipTap table styles */
-.ProseMirror table {
-  border-collapse: collapse;
-  margin: 1em 0;
-  overflow: hidden;
-  table-layout: fixed;
-  width: 100%;
+/* Continuous layout: SuperDoc renders a bare flow, so give it a sheet. */
+.nugnotes-superdoc .superdoc--web-layout {
+  background: transparent;
 }
-
-.ProseMirror th,
-.ProseMirror td {
-  border: 1px solid var(--glass-border);
+.nugnotes-superdoc .superdoc-web-flow {
   box-sizing: border-box;
-  min-width: 1em;
-  padding: 0.5em;
-  position: relative;
-  vertical-align: top;
+  max-width: 48rem;
+  min-height: 60vh;
+  margin: 1rem auto 4rem;
+  padding: 2rem 2.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
 }
 
-.ProseMirror th {
-  background-color: var(--glass-bg-light);
-  font-weight: bold;
-  text-align: left;
+/* Phones: the sheet is the screen. */
+@media (max-width: 767px) {
+  .nugnotes-superdoc .superdoc-web-flow {
+    max-width: none;
+    margin: 0;
+    padding: 1.25rem 1rem 5rem;
+    border: 0;
+    border-radius: 0;
+  }
 }
 
-.ProseMirror .selectedCell:after {
-  background: var(--primary);
-  content: "";
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  opacity: 0.2;
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
+/* SuperDoc sizes toolbar icons with `.superdoc-toolbar svg`, but the overflow
+   (⋮) menu is attached to <body>, outside .superdoc-toolbar — so its icons
+   collapsed to 0×0. Give them the toolbar's size. */
+.sd-toolbar-overflow-menu .sd-toolbar-icon__icon {
+  width: 16px;
 }
-
-/* TipTap highlight styles */
-.ProseMirror mark {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-  padding: 0.125em 0.25em;
-  border-radius: 0.125rem;
+.sd-toolbar-overflow-menu .sd-toolbar-icon__icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-
-/* Citation mark styles */
-.citation-mark {
-  border-bottom: 1px dotted var(--primary);
-  cursor: pointer;
-  position: relative;
-  transition: background-color 0.15s ease;
+/* Same root cause for colour: the dropdown carets in that menu set no fill of
+   their own and fell back to black. */
+.sd-toolbar-overflow-menu svg {
+  fill: currentColor;
 }
-
-.citation-mark::after {
-  content: "\23F1"; /* stopwatch emoji */
-  font-size: 0.6em;
-  vertical-align: super;
-  margin-left: 2px;
-  opacity: 0.4;
-}
-
-.citation-mark:hover {
-  background-color: color-mix(in srgb, var(--primary) 15%, transparent);
-}
-
-.citation-mark:hover::after {
-  opacity: 1;
+/* Most toolbar icons are filled with currentColor, but some (line height)
+   are drawn with a hard-coded black stroke, which stayed black on dark themes. */
+.sd-toolbar-icon__icon svg [stroke]:not([stroke="none"]) {
+  stroke: currentColor;
 }
 
 /* ============================================================ */

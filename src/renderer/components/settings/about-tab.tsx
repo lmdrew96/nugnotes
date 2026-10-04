@@ -40,7 +40,7 @@ export function AboutTab({ onShowTos, onShowPrivacy, onShowWhatsNew }: AboutTabP
           onClick={() => window.open('https://github.com/lmdrew96/nugnotes', '_blank')}
         >
           <Github className="h-4 w-4" />
-          View on GitHub
+          Open source (AGPL-3.0) — view the code
           <ExternalLink className="h-3 w-3" />
         </button>
         <button
