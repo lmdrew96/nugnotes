@@ -48,11 +48,16 @@ const buildId =
  * ControlledChaos migration lost three builds to a variable the dashboard
  * insisted was set.
  */
-const PRODUCTION_FALLBACKS = {
-  VITE_CONVEX_URL: 'https://spotted-vulture-584.convex.cloud',
-  VITE_CLERK_PUBLISHABLE_KEY: 'pk_test_c3dlZXBpbmctamFja2FsLTEwLmNsZXJrLmFjY291bnRzLmRldiQ',
-  VITE_R2_PUBLIC_URL: 'https://pub-b767cae4f7244d33b04ab00365cc9148.r2.dev',
-} as const;
+const PRODUCTION_FALLBACKS: Record<string, string> = {
+  // NugNotes' production Convex deployment and Clerk instance don't exist yet;
+  // fill these in when they do (deploy patch). Empty means "no fallback": the
+  // build then fails rather than shipping an app with no backend. Never point
+  // these at another app's values — a dropped variable would silently connect
+  // NugNotes to that app's live backend.
+  VITE_CONVEX_URL: '',
+  VITE_CLERK_PUBLISHABLE_KEY: '',
+  VITE_R2_PUBLIC_URL: 'https://nugnotes-files.adhdesigns.dev',
+};
 
 /**
  * Writes the build stamp to dist/version.json so a running tab can detect a new
@@ -79,6 +84,12 @@ export default defineConfig(({ mode }) => {
   // loadEnv gives real environment variables priority over the files, which is
   // what keeps a build host's own values authoritative.
   const env = loadEnv(mode, __dirname, 'VITE_');
+  const missing = Object.entries(PRODUCTION_FALLBACKS)
+    .filter(([key, fallback]) => !env[key] && !fallback)
+    .map(([key]) => key);
+  if (missing.length > 0 && mode === 'production') {
+    throw new Error(`Missing build-time variable(s): ${missing.join(', ')}`);
+  }
   const publicEnv = Object.fromEntries(
     Object.entries(PRODUCTION_FALLBACKS).map(([key, fallback]) => [
       `import.meta.env.${key}`,

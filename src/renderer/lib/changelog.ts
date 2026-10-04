@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.1',
+    date: '2026-10-04',
+    title: 'Safer builds',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'NugNotes can no longer be built pointing at another app’s servers by mistake.',
+      },
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-10-04',
     title: 'A new notes editor',
