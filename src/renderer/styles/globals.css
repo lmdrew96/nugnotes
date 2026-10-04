@@ -70,8 +70,6 @@
   --record-glow: rgba(242, 196, 109, 0.4);
   --record-foreground: #2e2438;
   --waveform: #8cbdb9;
-  /* Transcript bg - darker purple */
-  --transcript-bg: #6b5a7d;
 
   /* === GLASSMORPHISM TOKENS === */
   --glass-bg: rgba(107, 90, 125, 0.55);
@@ -408,7 +406,6 @@
   --record-glow: rgba(191, 69, 152, 0.4);
   --record-foreground: #ffffff;
   --waveform: #3e7862;
-  --transcript-bg: #f4f1ec;
   --sidebar: #f4f1ec;
   --sidebar-foreground: #3a2a40;
   --sidebar-primary: #9a2c78;
@@ -475,7 +472,6 @@
   --record: #00f2ff;
   --record-glow: rgba(0, 242, 255, 0.4);
   --waveform: #99ff85;
-  --transcript-bg: #0d1a14;
   --sidebar: #0d1a14;
   --sidebar-foreground: #e0e0e0;
   --sidebar-primary: #00f2ff;
@@ -540,7 +536,6 @@
   --record: #1fe1fd;
   --record-glow: rgba(31, 225, 253, 0.4);
   --waveform: #ff5ee0;
-  --transcript-bg: #2d1235;
   --sidebar: #2d1235;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #1fe1fd;
@@ -605,7 +600,6 @@
   --record: #00ffff;
   --record-glow: rgba(0, 255, 255, 0.5);
   --waveform: #ffff00;
-  --transcript-bg: #1a1a1a;
   --sidebar: #1a1a1a;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #00ffff;
@@ -671,7 +665,6 @@
   --record-glow: rgba(0, 102, 0, 0.4);
   --record-foreground: #ffffff;
   --waveform: #0000cc;
-  --transcript-bg: #f0f0f0;
   --sidebar: #f0f0f0;
   --sidebar-foreground: #000000;
   --sidebar-primary: #006600;
@@ -736,7 +729,6 @@
   --record: #ff6ec7;
   --record-glow: rgba(255, 110, 199, 0.45);
   --waveform: #ffea00;
-  --transcript-bg: #0b1547;
   --sidebar: #0b1547;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ff6ec7;
@@ -801,7 +793,6 @@
   --record: #ff00aa;
   --record-glow: rgba(255, 0, 170, 0.4);
   --waveform: #7b00ff;
-  --transcript-bg: #ffe0ff;
   --sidebar: #ffe0ff;
   --sidebar-foreground: #330033;
   --sidebar-primary: #cc0088;

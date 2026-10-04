@@ -1,6 +1,6 @@
 /**
  * Exam Chat — Multi-session Nugget Chat for exam rooms.
- * Uses the Exam Room Brain's topic index as context instead of raw transcripts.
+ * Uses the Exam Room Brain's topic index as context instead of every session's raw material.
  * Haiku handles per-message chat; the brain provides intelligent context routing.
  */
 

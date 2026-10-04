@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildChatSystemPrompt } from '../convex/nuggetChat';
+import { CHAT_DOCUMENT_CHARS, buildChatSystemPrompt } from '../convex/nuggetChat';
 
-const TRANSCRIPT = 'Lorem ipsum lecture content. '.repeat(200);
+const DOCUMENTS = 'Lorem ipsum chapter text. '.repeat(200);
 
 const base = {
-  transcript: TRANSCRIPT,
+  documentText: DOCUMENTS,
   notes: 'my notes',
   nuggetNotes: 'key points',
   lectureType: 'stem',
@@ -17,10 +17,10 @@ function cachedBlock(blocks: ReturnType<typeof buildChatSystemPrompt>) {
 }
 
 describe('buildChatSystemPrompt cache prefix', () => {
-  it('marks a breakpoint when there is a transcript to cache', () => {
+  it('marks a breakpoint when there are documents to cache', () => {
     const blocks = buildChatSystemPrompt(base);
     expect(cachedBlock(blocks)).toBeDefined();
-    expect(cachedBlock(blocks)?.text).toContain(TRANSCRIPT.trim().slice(0, 40));
+    expect(cachedBlock(blocks)?.text).toContain(DOCUMENTS.trim().slice(0, 40));
   });
 
   it('keeps the cached block byte-identical as volatile inputs change', () => {
@@ -41,9 +41,8 @@ describe('buildChatSystemPrompt cache prefix', () => {
   });
 
   it('keeps the clock out of the cached block', () => {
-    // currentDateTime has minute granularity and used to sit at position 2,
-    // ahead of the transcript — a naive cache_control there would have been a
-    // pure loss.
+    // currentDateTime has minute granularity — inside the cached block it
+    // would invalidate the documents every minute.
     const blocks = buildChatSystemPrompt(base);
     expect(cachedBlock(blocks)?.text).not.toContain('9:15 AM');
     expect(blocks.map((b) => b.text).join('')).toContain('9:15 AM');
@@ -55,16 +54,16 @@ describe('buildChatSystemPrompt cache prefix', () => {
     expect(cached).not.toContain('key points');
   });
 
-  it('invalidates the prefix when the transcript itself grows, as it must', () => {
+  it('invalidates the prefix when the documents change, as it must', () => {
     const grown = cachedBlock(
-      buildChatSystemPrompt({ ...base, transcript: `${TRANSCRIPT} and more` }),
+      buildChatSystemPrompt({ ...base, documentText: `${DOCUMENTS} and another upload` }),
     )?.text;
     expect(grown).not.toBe(cachedBlock(buildChatSystemPrompt(base))?.text);
   });
 
-  it('skips the breakpoint entirely with no transcript', () => {
+  it('skips the breakpoint entirely with no documents', () => {
     // Nothing worth caching, and a short prefix would silently no-op anyway.
-    const blocks = buildChatSystemPrompt({ ...base, transcript: undefined });
+    const blocks = buildChatSystemPrompt({ ...base, documentText: undefined });
     expect(cachedBlock(blocks)).toBeUndefined();
     expect(blocks).toHaveLength(1);
   });
@@ -73,9 +72,16 @@ describe('buildChatSystemPrompt cache prefix', () => {
     const all = buildChatSystemPrompt(base)
       .map((b) => b.text)
       .join('');
-    expect(all).toContain('Lecture Transcript');
+    expect(all).toContain('Uploaded Documents');
     expect(all).toContain("Student's Notes");
-    expect(all).toContain('AI-Generated Key Points');
+    expect(all).toContain("Nugget's Key Points");
     expect(all).toContain('Lecture Type');
+  });
+
+  it('caps how much document text a chat carries', () => {
+    const huge = 'x'.repeat(CHAT_DOCUMENT_CHARS + 5_000);
+    const cached = cachedBlock(buildChatSystemPrompt({ ...base, documentText: huge }))?.text ?? '';
+    expect(cached).toContain('x'.repeat(CHAT_DOCUMENT_CHARS));
+    expect(cached).not.toContain('x'.repeat(CHAT_DOCUMENT_CHARS + 1));
   });
 });

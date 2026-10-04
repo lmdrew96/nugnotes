@@ -1,67 +1,50 @@
 import { describe, expect, it } from 'vitest';
 import {
-  type NuggetNoteInput,
+  MAX_KEY_POINTS,
+  getKeyPointsPrompt,
   getNoteGenerationPrompt,
-  getNoteGenerationPromptWithCitations,
+  parseKeyPoints,
 } from '../convex/prompts';
 
-const NUGGET_NOTES: NuggetNoteInput[] = [
-  { text: 'Meiosis produces four haploid daughter cells.', recordingTime: 184 },
-  { text: 'Crossing over happens in prophase I.', recordingTime: 372 },
-];
-
-const SEGMENTS = [{ text: 'Some lecture content.', timestamp: 1000, isFinal: true }];
-
-describe('getNoteGenerationPrompt with live notes', () => {
-  it('includes the captured notes with m:ss timestamps', () => {
-    const prompt = getNoteGenerationPrompt('transcript', 'general', undefined, NUGGET_NOTES);
-    expect(prompt).toContain('KEY POINTS CAPTURED DURING THE LECTURE');
-    expect(prompt).toContain('[3:04] Meiosis produces four haploid daughter cells.');
-    expect(prompt).toContain('[6:12] Crossing over happens in prophase I.');
+describe('getNoteGenerationPrompt', () => {
+  it('works from the uploaded documents, not a transcript', () => {
+    const prompt = getNoteGenerationPrompt('Chapter 4: Enzymes', 'stem');
+    expect(prompt).toContain('STUDY MATERIAL:\nChapter 4: Enzymes');
+    expect(prompt.toLowerCase()).not.toContain('transcript');
   });
 
-  it('tells the model it may overrule them', () => {
-    // The live pass sees only short excerpts, so the full pass has to be free to
-    // correct it rather than faithfully restating a mistake.
-    const prompt = getNoteGenerationPrompt('transcript', 'general', undefined, NUGGET_NOTES);
-    expect(prompt).toContain('correct anything the full transcript contradicts');
+  it("frames the student's notes as context to complement", () => {
+    const prompt = getNoteGenerationPrompt('reading', 'general', 'my own notes');
+    expect(prompt).toContain("THE STUDENT'S NOTES SO FAR:\nmy own notes");
+    expect(prompt).toContain('Do NOT simply repeat their notes');
   });
 
-  it('omits the section entirely when there are no notes', () => {
-    for (const notes of [undefined, []]) {
-      const prompt = getNoteGenerationPrompt('transcript', 'general', undefined, notes);
-      expect(prompt).not.toContain('KEY POINTS CAPTURED');
+  it('omits the notes section when there are none', () => {
+    for (const notes of [undefined, '', '   ']) {
+      expect(getNoteGenerationPrompt('reading', 'general', notes)).not.toContain("STUDENT'S NOTES");
     }
-  });
-
-  it('keeps the student notes framing separate from the live notes', () => {
-    const prompt = getNoteGenerationPrompt('transcript', 'general', 'my own notes', NUGGET_NOTES);
-    expect(prompt).toContain('YOUR NOTES (taken during the lecture)');
-    expect(prompt).toContain('KEY POINTS CAPTURED DURING THE LECTURE');
-  });
-
-  it('caps how many notes reach the prompt, keeping the most recent', () => {
-    const many: NuggetNoteInput[] = Array.from({ length: 80 }, (_, i) => ({
-      text: `note-${i}`,
-      recordingTime: i * 60,
-    }));
-    const prompt = getNoteGenerationPrompt('transcript', 'general', undefined, many);
-    expect(prompt).not.toContain('note-19 ');
-    expect(prompt).toContain('note-79');
-    expect(prompt.match(/^- \[/gm) ?? []).toHaveLength(60);
   });
 });
 
-describe('getNoteGenerationPromptWithCitations with live notes', () => {
-  it('includes the section without disturbing the citation instructions', () => {
-    const prompt = getNoteGenerationPromptWithCitations(
-      SEGMENTS,
-      'general',
-      undefined,
-      NUGGET_NOTES,
-    );
-    expect(prompt).toContain('KEY POINTS CAPTURED DURING THE LECTURE');
-    expect(prompt).toContain('[cite:XXXXX]');
-    expect(prompt).toContain('TIMESTAMPED TRANSCRIPT:');
+describe('key points', () => {
+  it('asks for a bounded bullet list from the material', () => {
+    const prompt = getKeyPointsPrompt("STUDENT'S NOTES:\nphotosynthesis", 'stem');
+    expect(prompt).toContain(`3-${MAX_KEY_POINTS} bullet points`);
+    expect(prompt).toContain('photosynthesis');
+  });
+
+  it('parses bullets, strips bold, drops scraps and caps the count', () => {
+    const reply = [
+      'Here are the key points:',
+      '- **ATP** carries energy in cells',
+      '• Enzymes lower activation energy',
+      '- ok',
+      ...Array.from({ length: 12 }, (_, i) => `- Extra point number ${i}`),
+    ].join('\n');
+    const points = parseKeyPoints(reply);
+    expect(points[0]).toBe('ATP carries energy in cells');
+    expect(points[1]).toBe('Enzymes lower activation energy');
+    expect(points).not.toContain('ok');
+    expect(points).toHaveLength(MAX_KEY_POINTS);
   });
 });

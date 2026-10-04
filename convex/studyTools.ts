@@ -1,14 +1,14 @@
 /**
  * Study Tools — AI-powered study tool generation + CRUD
- * Each tool generates structured JSON output from session transcript/notes.
+ * Each tool generates structured JSON output from the session's notes and documents.
  */
 
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { type ActionCtx, action, internalMutation, mutation, query } from './_generated/server';
 import { callClaude as callClaudeShared } from './config';
+import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
 import {
-  buildInput,
   getConceptMapPrompt,
   getEli5Prompt,
   getFlashcardPrompt,
@@ -24,16 +24,17 @@ import type { LectureType } from './prompts';
 // ─── Helpers ─────────────────────────────────────────────────
 
 /**
- * Loads a session and the text a study tool works from (its documentText).
- * The read runs as the caller, so a session that isn't theirs comes back as
- * not found.
+ * Loads a session and the material a study tool works from: its typed notes
+ * and uploaded documents. The read runs as the caller, so a session that isn't
+ * theirs comes back as not found. Too little material is a friendly error the
+ * study tools panel shows as-is.
  */
 async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
   const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
   if (!session) throw new Error('Session not found');
-  const sessionContent = session.documentText;
-  if (!sessionContent) throw new Error('No document text available');
-  return { session, lecture: buildInput(sessionContent, session.notesPlainText) };
+  const material = { notes: session.notesPlainText, documentText: session.documentText };
+  requireEnoughMaterial(material);
+  return { session, lecture: buildMaterial(material) };
 }
 
 /** Strip markdown code fences that Claude sometimes wraps JSON in */
@@ -64,7 +65,7 @@ export const callClaudeWithLecture = (
     system: [
       {
         type: 'text',
-        text: `LECTURE MATERIAL:\n\n${lecture}`,
+        text: `STUDY MATERIAL:\n\n${lecture}`,
         cache_control: { type: 'ephemeral' },
       },
     ],

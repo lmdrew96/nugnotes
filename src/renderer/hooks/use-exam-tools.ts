@@ -2,6 +2,7 @@
  * Hook for exam room study tools — multi-session AI generation + caching.
  */
 
+import { friendlyError } from '@/lib/errors';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { useCallback, useState } from 'react';
 import { api } from '../../../convex/_generated/api';
@@ -34,7 +35,7 @@ export function useExamTool<T>(examRoomId: Id<'examRooms'> | null, toolType: Exa
       try {
         await generateAction({ examRoomId, toolType, count });
       } catch (e) {
-        const message = e instanceof Error ? e.message : 'Generation failed';
+        const message = friendlyError(e, 'Generation failed. Please try again.');
         setError(message);
       } finally {
         setIsGenerating(false);

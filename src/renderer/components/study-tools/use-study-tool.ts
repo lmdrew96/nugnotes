@@ -3,6 +3,7 @@
  * Each tool uses this to check for cached results and trigger generation.
  */
 
+import { friendlyError } from '@/lib/errors';
 import type { StudyToolType } from '@/types/study-tools';
 import { useAction, useQuery } from 'convex/react';
 import { useCallback, useState } from 'react';
@@ -46,7 +47,8 @@ export function useStudyTool<T>(sessionId: Id<'sessions'>, toolType: StudyToolTy
           ...extraArgs,
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : 'Generation failed';
+        console.error('Study tool generation failed:', e);
+        const message = friendlyError(e, 'Generation failed. Please try again.');
         setError(message);
       } finally {
         setIsGenerating(false);

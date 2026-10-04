@@ -10,6 +10,7 @@ import { action, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { getExamSimulationPrompt } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { NOT_ENOUGH_MATERIAL, hasEnoughMaterial } from './studyMaterial';
 import { callClaude, extractJson } from './studyTools';
 
 // ─── Queries ─────────────────────────────────────────────────
@@ -94,10 +95,13 @@ export const generateExamSimulation = action({
     // Determine lecture type
     const lectureType: LectureType = (sessions[0]?.lectureType as LectureType) ?? 'general';
 
+    // Exam tools need at least one session with something to work from.
+    if (!sessions.some((s) => hasEnoughMaterial(s))) throw new ConvexError(NOT_ENOUGH_MATERIAL);
+
     const sessionInput = sessions.map((s) => ({
       title: s.title,
-      transcript: s.transcript,
       notes: s.notes,
+      documentText: s.documentText,
     }));
 
     const prompt = getExamSimulationPrompt(

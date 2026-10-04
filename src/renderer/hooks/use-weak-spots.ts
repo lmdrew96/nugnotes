@@ -2,6 +2,7 @@
  * Hook for weak spots tracking and targeted review generation.
  */
 
+import { friendlyError } from '@/lib/errors';
 import type { WeakSpotTopic } from '@/types/exam';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { useCallback, useState } from 'react';
@@ -30,7 +31,7 @@ export function useWeakSpots(examRoomId: Id<'examRooms'> | null) {
     try {
       await generateReview({ examRoomId });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate review');
+      setError(friendlyError(e, 'Failed to generate the review. Please try again.'));
     } finally {
       setIsGeneratingReview(false);
     }

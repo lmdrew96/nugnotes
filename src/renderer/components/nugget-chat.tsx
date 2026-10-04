@@ -20,6 +20,7 @@ interface ChatMessage {
 
 interface NuggetChatProps {
   notes?: string;
+  documentText?: string;
   sessionId?: string;
   convexUrl?: string;
   lectureType?: string;
@@ -30,6 +31,7 @@ interface NuggetChatProps {
 
 export function NuggetChat({
   notes,
+  documentText,
   sessionId,
   convexUrl,
   lectureType,
@@ -41,6 +43,7 @@ export function NuggetChat({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [includeNotes, setIncludeNotes] = useState(true);
+  const [includeDocuments, setIncludeDocuments] = useState(true);
 
   // Bug report state
   const [showBugReport, setShowBugReport] = useState(false);
@@ -169,6 +172,7 @@ export function NuggetChat({
               content: m.content,
             })),
             notes: includeNotes ? notes : undefined,
+            documentText: includeDocuments ? documentText : undefined,
             lectureType,
             nuggetNotes: includeNotes ? nuggetNotes : undefined,
             currentDateTime: new Date().toLocaleString('en-US', {
@@ -218,7 +222,9 @@ export function NuggetChat({
       isLoading,
       messages,
       notes,
+      documentText,
       includeNotes,
+      includeDocuments,
       lectureType,
       nuggetNotes,
       getApiUrl,
@@ -465,6 +471,17 @@ export function NuggetChat({
                     />
                     <span>Include notes</span>
                   </label>
+                  {documentText && (
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeDocuments}
+                        onChange={(e) => setIncludeDocuments(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <span>Include documents</span>
+                    </label>
+                  )}
                 </div>
 
                 {/* Input */}

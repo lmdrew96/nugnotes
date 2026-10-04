@@ -100,7 +100,7 @@ export function ExamSessionViewer({
               {hasNuggetNotes && (
                 <TabsTrigger value="nugget" className="gap-1.5">
                   <BookOpen className="h-3.5 w-3.5" />
-                  Nugget Notes
+                  Key Points
                 </TabsTrigger>
               )}
             </TabsList>

@@ -1,74 +1,38 @@
-import { v } from 'convex/values';
+import { ConvexError, v } from 'convex/values';
+import { api } from './_generated/api';
 import { action } from './_generated/server';
-import { parseCitations } from './citations';
 import { callClaude } from './config';
-import {
-  type LectureType,
-  getNoteGenerationPrompt,
-  getNoteGenerationPromptWithCitations,
-} from './prompts';
+import { type LectureType, getNoteGenerationPrompt } from './prompts';
 
-export const generateNotesFromTranscript = action({
-  args: {
-    transcript: v.string(),
-    transcriptSegments: v.optional(
-      v.array(
-        v.object({
-          text: v.string(),
-          timestamp: v.number(),
-          isFinal: v.boolean(),
-        }),
-      ),
-    ),
-    sessionId: v.string(),
-    lectureType: v.optional(v.string()),
-    existingNotes: v.optional(v.string()),
-    // The live pass's output, used as an outline for the deep pass.
-    nuggetNotes: v.optional(
-      v.array(
-        v.object({
-          text: v.string(),
-          recordingTime: v.number(),
-          sourceStartMs: v.optional(v.number()),
-          sourceEndMs: v.optional(v.number()),
-        }),
-      ),
-    ),
-  },
-  handler: async (_ctx, args) => {
-    const lectureType = (args.lectureType || 'general') as LectureType;
+/** Most document text one generation reads (~10k tokens). */
+const NOTE_SOURCE_CHARS = 40_000;
 
-    // Use citation-aware prompt when segments are available
-    const prompt =
-      args.transcriptSegments && args.transcriptSegments.length > 0
-        ? getNoteGenerationPromptWithCitations(
-            args.transcriptSegments,
-            lectureType,
-            args.existingNotes,
-            args.nuggetNotes,
-          )
-        : getNoteGenerationPrompt(
-            args.transcript,
-            lectureType,
-            args.existingNotes,
-            args.nuggetNotes,
-          );
+/**
+ * Turn a session's uploaded documents into markdown notes. Reads the session
+ * as the caller, so only its owner can run this; the editor appends the result.
+ */
+export const generateNotes = action({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, { sessionId }): Promise<{ notes: string }> => {
+    const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
+    if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });
+    const documentText = session.documentText?.trim();
+    if (!documentText) {
+      throw new ConvexError({
+        code: 'NO_DOCUMENT',
+        message: 'Upload a document first, then Nugget can turn it into notes.',
+      });
+    }
 
-    const generatedNotes = await callClaude({
+    const prompt = getNoteGenerationPrompt(
+      documentText.slice(0, NOTE_SOURCE_CHARS),
+      (session.lectureType || 'general') as LectureType,
+      session.notesPlainText,
+    );
+    const notes = await callClaude({
       maxTokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
-
-    // Parse citations if segments were provided
-    const citations =
-      args.transcriptSegments && args.transcriptSegments.length > 0
-        ? parseCitations(generatedNotes, args.transcriptSegments)
-        : [];
-
-    return {
-      notes: generatedNotes,
-      citations,
-      success: true,
-    };
+    return { notes };
   },
 });

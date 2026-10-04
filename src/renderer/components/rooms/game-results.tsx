@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useGameActions } from '@/hooks/use-study-games';
+import { friendlyError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { RotateCcw, Swords, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ export function GameResults({ game, currentUserId, isHost }: GameResultsProps) {
       await cancelGame({ gameId: game._id });
       await createGame({ roomId, gameType: game.gameType });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to start new game';
+      const message = friendlyError(error, 'Failed to start new game');
       toast.error(message);
     }
   };

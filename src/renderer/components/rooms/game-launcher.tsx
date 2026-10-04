@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useGameActions } from '@/hooks/use-study-games';
+import { friendlyError } from '@/lib/errors';
 import { Gamepad2, Swords, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Id } from '../../../../convex/_generated/dataModel';
@@ -22,7 +23,7 @@ export function GameLauncher({ roomId, hasPinnedSession }: GameLauncherProps) {
     try {
       await createGame({ roomId, gameType });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to start game';
+      const message = friendlyError(error, 'Failed to start game');
       toast.error(message);
     }
   };

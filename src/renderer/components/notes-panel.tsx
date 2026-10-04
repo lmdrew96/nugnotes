@@ -1,6 +1,7 @@
 import type { NotesEditorHandle, NotesSnapshot } from '@/components/notes-editor';
 import { Button } from '@/components/ui/button';
 import { useSession, useSessionMutations } from '@/hooks/use-sessions';
+import { friendlyError } from '@/lib/errors';
 import { useAction } from 'convex/react';
 import { Loader2, PenLine, Sparkles } from 'lucide-react';
 import { Suspense, lazy, useCallback, useRef, useState } from 'react';
@@ -26,7 +27,7 @@ interface NotesPanelProps {
 export function NotesPanel({ sessionId, ensureSession }: NotesPanelProps) {
   const session = useSession(sessionId ?? null);
   const { updateSession } = useSessionMutations();
-  const generateNotesAction = useAction(api.ai.generateNotesFromTranscript);
+  const generateNotesAction = useAction(api.ai.generateNotes);
   const editorRef = useRef<NotesEditorHandle>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -52,28 +53,21 @@ export function NotesPanel({ sessionId, ensureSession }: NotesPanelProps) {
   };
 
   const handleGenerateNotes = async () => {
-    const sourceText = session?.documentText?.trim();
-    if (!sessionId || !session || !sourceText) {
-      toast.error('Upload a document first, then Nugget can turn it into notes.');
-      return;
-    }
+    if (!sessionId) return;
     setIsGenerating(true);
     try {
+      // Save the latest typing first, so Nugget complements it rather than repeating it.
       await editorRef.current?.flush();
-      const data = await generateNotesAction({
-        transcript: sourceText,
-        sessionId,
-        lectureType: session.lectureType,
-        existingNotes: session.notesPlainText || undefined,
-      });
-      if (!data.success || !data.notes) {
-        toast.error('Received an invalid response from Nugget. Please try again.');
+      const { notes } = await generateNotesAction({ sessionId });
+      if (!notes.trim()) {
+        toast.error("Nugget didn't come up with anything this time. Please try again.");
         return;
       }
-      await editorRef.current?.insertMarkdown(data.notes);
+      await editorRef.current?.insertMarkdown(notes);
     } catch (error) {
+      console.error('Generating notes failed:', error);
       toast.error(
-        `Failed to generate notes: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        friendlyError(error, "Nugget couldn't generate notes right now. Please try again."),
       );
     } finally {
       setIsGenerating(false);

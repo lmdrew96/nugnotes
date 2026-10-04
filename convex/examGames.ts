@@ -8,6 +8,7 @@ import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { postExamSystemMessage, requireExamRoomHost, requireExamRoomMember } from './examRooms';
+import { NOT_ENOUGH_MATERIAL, hasEnoughMaterial } from './studyMaterial';
 
 // ─── Queries ────────────────────────────────────────────────
 
@@ -146,6 +147,20 @@ export const createExamGame = mutation({
       .withIndex('by_room', (q) => q.eq('examRoomId', args.examRoomId))
       .collect();
     if (sessionLinks.length === 0) throw new ConvexError('Add sessions first');
+    // As for study room games: check now, not in the background generator.
+    let anyMaterial = false;
+    for (const link of sessionLinks) {
+      const session = await ctx.db.get(link.sessionId);
+      const notes = await ctx.db
+        .query('sessionNotes')
+        .withIndex('by_session', (q) => q.eq('sessionId', link.sessionId))
+        .unique();
+      if (hasEnoughMaterial({ notes: notes?.plainText, documentText: session?.documentText })) {
+        anyMaterial = true;
+        break;
+      }
+    }
+    if (!anyMaterial) throw new ConvexError(NOT_ENOUGH_MATERIAL);
 
     // Ensure no active game
     const existingGames = await ctx.db

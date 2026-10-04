@@ -2,6 +2,7 @@
  * Hook for exam simulation — timer management, question navigation, submission.
  */
 
+import { friendlyError } from '@/lib/errors';
 import type { ExamSimAttempt, ExamSimQuestion } from '@/types/exam';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -60,7 +61,7 @@ export function useExamSimulation(examRoomId: Id<'examRooms'> | null) {
       try {
         await generateAction({ examRoomId, questionCount });
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Generation failed');
+        setError(friendlyError(e, 'Generation failed. Please try again.'));
       } finally {
         setIsGenerating(false);
       }

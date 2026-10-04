@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.3.0',
+    date: '2026-10-04',
+    title: 'Nugget reads your notes and documents',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Ask Nugget to pull out the key points of a session, from your notes and documents.',
+      },
+      {
+        kind: 'improved',
+        text: 'Study tools, games and exam rooms now work from your typed notes as well as uploads.',
+      },
+      {
+        kind: 'improved',
+        text: 'Nugget chat can see the documents you uploaded, not just your notes.',
+      },
+      {
+        kind: 'improved',
+        text: 'If a session is too empty to study from, Nugget tells you what to add instead of failing.',
+      },
+    ],
+  },
+  {
     version: '0.2.1',
     date: '2026-10-04',
     title: 'Safer builds',

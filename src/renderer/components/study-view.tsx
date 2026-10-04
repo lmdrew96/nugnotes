@@ -47,7 +47,7 @@ const formatDate = (timestamp: number) =>
 export function StudyView() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { setActiveSessionId, setNuggetNotes } = useSessionContext();
+  const { setActiveSessionId } = useSessionContext();
   const sessions = useSessionList();
   const { deleteSession, restoreSession, permanentDeleteSession } = useSessionMutations();
   const trashedSessions = useTrash();
@@ -61,8 +61,7 @@ export function StudyView() {
   // Sync selected session to context for NuggetChat
   useEffect(() => {
     setActiveSessionId(selectedId as SessionId | null);
-    setNuggetNotes([]);
-  }, [selectedId, setActiveSessionId, setNuggetNotes]);
+  }, [selectedId, setActiveSessionId]);
 
   // Clear context on unmount
   useEffect(() => {

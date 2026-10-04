@@ -31,7 +31,7 @@ const NO_COURSE = 'none';
 export function HomeView() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { setActiveSessionId, setNuggetNotes } = useSessionContext();
+  const { setActiveSessionId } = useSessionContext();
   const { createSession, updateSession } = useSessionMutations();
   const { settings } = useStudySettings();
   const courses = settings && '_id' in settings ? (settings.courses ?? []) : [];
@@ -81,8 +81,7 @@ export function HomeView() {
   // Nugget chat follows the session being written.
   useEffect(() => {
     setActiveSessionId(sessionId);
-    setNuggetNotes([]);
-  }, [sessionId, setActiveSessionId, setNuggetNotes]);
+  }, [sessionId, setActiveSessionId]);
 
   useEffect(() => {
     return () => setActiveSessionId(null);

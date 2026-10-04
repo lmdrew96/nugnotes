@@ -5,34 +5,33 @@
  */
 
 import type { LectureType } from './prompts';
-import { STUDY_FOCUS, truncateTranscript } from './studyToolPrompts';
+import { buildMaterial } from './studyMaterial';
+import { STUDY_FOCUS } from './studyToolPrompts';
+
+/** One session's material in an exam room. */
+export interface ExamSession {
+  title: string;
+  notes?: string;
+  documentText?: string;
+}
 
 // ─── Multi-Session Input Builder ─────────────────────────────
 
 export function buildExamInput(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
-  maxTotalTranscriptChars = 12000,
-  maxTotalNotesChars = 4000,
+  sessions: ExamSession[],
+  maxTotalChars = 16000,
 ): string {
-  const n = sessions.length || 1;
-  const perSessionTranscript = Math.floor(maxTotalTranscriptChars / n);
-  const perSessionNotes = Math.floor(maxTotalNotesChars / n);
+  const perSession = Math.floor(maxTotalChars / (sessions.length || 1));
 
   let input = `${brainContext}\n\nSESSION CONTENT:\n\n`;
-
   for (let i = 0; i < sessions.length; i++) {
     const s = sessions[i];
     input += `--- SESSION ${i + 1}: "${s.title}" ---\n`;
-    if (s.transcript) {
-      input += `TRANSCRIPT:\n${truncateTranscript(s.transcript, perSessionTranscript)}\n`;
-    }
-    if (s.notes?.trim()) {
-      input += `NOTES:\n${s.notes.slice(0, perSessionNotes)}\n`;
-    }
+    const material = buildMaterial(s, perSession);
+    if (material) input += `${material}\n`;
     input += '\n';
   }
-
   return input;
 }
 
@@ -40,7 +39,7 @@ export function buildExamInput(
 
 export function getExamSummaryPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
 ): string {
   return `You are an expert academic summarizer for NugNotes, an ADHD-friendly study app.
@@ -63,7 +62,7 @@ Set wordCount to the actual word count of the summary text.`;
 
 export function getExamKeyConceptsPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
 ): string {
   return `You are an expert concept extractor for NugNotes, an ADHD-friendly study app.
@@ -91,7 +90,7 @@ importance must be "high", "medium", or "low". Include 8-12 concepts, ordered by
 
 export function getExamFlashcardPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
   count: number,
 ): string {
@@ -119,7 +118,7 @@ difficulty must be "easy", "medium", or "hard". Generate exactly ${count} cards.
 
 export function getExamQuizPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
   questionCount: number,
 ): string {
@@ -148,7 +147,7 @@ correctIndex is 0-based (0-3). Generate exactly ${questionCount} questions. Vary
 
 export function getExamConceptMapPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
 ): string {
   return `You are an expert concept mapper for NugNotes, an ADHD-friendly study app.
@@ -176,7 +175,7 @@ type must be "main", "sub", or "detail". Use 10-20 nodes. Show cross-session con
 
 export function getExamEli5Prompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
 ): string {
   return `You are a friendly explainer for NugNotes, an ADHD-friendly study app.
@@ -204,7 +203,7 @@ Keep explanations under 3 sentences each. Make analogies fun and memorable. Incl
 /** Exam simulation prompt — generates exam-grade questions across Bloom's taxonomy */
 export function getExamSimulationPrompt(
   brainContext: string,
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
   questionCount: number,
 ): string {
@@ -240,7 +239,7 @@ correctIndex is 0-based (0-3). bloomLevel must be "recall", "comprehension", "ap
 /** Targeted review prompt — generates content focused on weak topics */
 export function getTargetedReviewPrompt(
   weakTopics: string[],
-  sessions: Array<{ title: string; transcript: string; notes?: string }>,
+  sessions: ExamSession[],
   lectureType: LectureType,
 ): string {
   const topicList = weakTopics.map((t) => `• ${t}`).join('\n');
@@ -251,8 +250,8 @@ export function getTargetedReviewPrompt(
   let input = 'RELEVANT SESSION CONTENT:\n\n';
   for (const s of sessions) {
     input += `--- "${s.title}" ---\n`;
-    if (s.transcript) input += `${truncateTranscript(s.transcript, maxChars)}\n`;
-    if (s.notes?.trim()) input += `NOTES: ${s.notes.slice(0, 2000)}\n`;
+    const material = buildMaterial(s, maxChars);
+    if (material) input += `${material}\n`;
     input += '\n';
   }
 

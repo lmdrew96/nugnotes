@@ -18,8 +18,9 @@ import {
 import { requireAuth } from './authHelpers';
 import { buildExamInput } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
 import { postSystemMessage, requireRoomHost, requireRoomMember } from './studyRooms';
-import { buildInput, getJeopardyPrompt, getQuizPrompt } from './studyToolPrompts';
+import { getJeopardyPrompt, getQuizPrompt } from './studyToolPrompts';
 import { callClaude, callClaudeWithLecture, extractJson } from './studyTools';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -213,6 +214,15 @@ export const createGame = mutation({
     const room = await ctx.db.get(args.roomId);
     if (!room?.isActive) throw new ConvexError('Room is not active');
     if (!room.pinnedSessionId) throw new ConvexError('Pin a session first');
+    // Questions are generated in the background once the game starts; check the
+    // material now so the host hears about an empty session instead of a game
+    // stuck on "generating".
+    const pinned = await ctx.db.get(room.pinnedSessionId);
+    const pinnedNotes = await ctx.db
+      .query('sessionNotes')
+      .withIndex('by_session', (q) => q.eq('sessionId', room.pinnedSessionId as Id<'sessions'>))
+      .unique();
+    requireEnoughMaterial({ notes: pinnedNotes?.plainText, documentText: pinned?.documentText });
 
     // Ensure no active game
     const existingGames = await ctx.db
@@ -678,7 +688,7 @@ export const generateQuestions = internalAction({
 
       const combinedInput = buildExamInput(
         brain.brainContext,
-        sessions.map((s) => ({ title: s.title, transcript: s.transcript, notes: s.notes })),
+        sessions.map((s) => ({ title: s.title, notes: s.notes, documentText: s.documentText })),
       );
 
       if (gameType === 'quiz_battle') {
@@ -690,11 +700,12 @@ export const generateQuestions = internalAction({
       }
     } else {
       // Study room: use single pinned session
-      const { transcript, notesPlainText, lectureType } = game;
-      if (!transcript) throw new Error('Pinned session has no transcript');
+      const { notesPlainText, documentText, lectureType } = game;
+      const material = { notes: notesPlainText, documentText };
+      requireEnoughMaterial(material);
 
       const lt = (lectureType || 'general') as LectureType;
-      lecture = buildInput(transcript, notesPlainText ?? undefined);
+      lecture = buildMaterial(material);
 
       if (gameType === 'quiz_battle') {
         prompt = getQuizPrompt(lt, 10);
@@ -740,8 +751,8 @@ export const getGameForGeneration = internalQuery({
 
       return {
         gameType: game.gameType,
-        transcript: null,
         notesPlainText: notesDoc?.plainText ?? session.notesPlainText ?? null,
+        documentText: session.documentText ?? null,
         lectureType: session.lectureType ?? null,
         isExamRoom: false,
         examRoomId: null,
@@ -752,8 +763,8 @@ export const getGameForGeneration = internalQuery({
     if (game.examRoomId) {
       return {
         gameType: game.gameType,
-        transcript: null,
         notesPlainText: null,
+        documentText: null,
         lectureType: null,
         isExamRoom: true,
         examRoomId: game.examRoomId,

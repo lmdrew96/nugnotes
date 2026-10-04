@@ -1,8 +1,8 @@
 /**
- * NuggetChat - chat for Q&A about transcript/notes.
+ * NuggetChat - chat for Q&A about a session's notes and uploaded documents.
  * Runs on the callClaude default model (see convex/config.ts) — it does not
  * pass its own, so naming a model here would drift the moment that changes.
- * Provides contextual responses based on the lecture content.
+ * Provides contextual responses based on the session's material.
  * Accepts lecture type and Nugget's AI-generated notes for richer context.
  */
 
@@ -21,8 +21,11 @@ interface ChatMessage {
   content: string;
 }
 
+/** Most document text a chat carries — a stack of PDFs mustn't make every turn huge. */
+export const CHAT_DOCUMENT_CHARS = 60_000;
+
 export interface ChatPromptInput {
-  transcript?: string;
+  documentText?: string;
   notes?: string;
   nuggetNotes?: string;
   lectureType?: string;
@@ -38,7 +41,7 @@ export interface ChatPromptInput {
  * a 0% hit rate that costs more than not caching at all.
  */
 export function buildChatSystemPrompt({
-  transcript,
+  documentText,
   notes,
   nuggetNotes,
   lectureType,
@@ -46,17 +49,15 @@ export function buildChatSystemPrompt({
 }: ChatPromptInput): Anthropic.Messages.TextBlockParam[] {
   // The system prompt is built in two halves so the expensive part can be cached.
   //
-  // CACHED: personality, lecture type, and the transcript. For a 50-minute
-  // lecture the transcript dominates the prompt and was previously re-sent and
-  // re-billed on every single chat turn.
+  // CACHED: personality, lecture type, and the uploaded documents. Documents
+  // rarely change during a conversation and are usually the bulk of the prompt,
+  // so re-sending them at full price every turn is the cost worth avoiding.
   //
-  // UNCACHED: the student's notes, Nugget's notes, and the current time. These
-  // change while a session is live — notes as the student types, the clock every
-  // minute — and caching is a prefix match, so anything volatile placed before
-  // the transcript would invalidate it on every message. The clock in particular
-  // sat at position 2 in the old ordering, which would have made a naive
-  // cache_control a pure loss.
-  let systemPrompt = `You are Nugget, a friendly and helpful AI study companion in NugNotes, a note-taking app for students. You help students understand their lecture content, answer questions, and provide study assistance.
+  // UNCACHED: the student's notes, Nugget's key points, and the current time.
+  // Notes change as the student types and the clock every minute, and caching
+  // is a prefix match — anything volatile placed before the documents would
+  // invalidate them on every message.
+  let systemPrompt = `You are Nugget, a friendly and helpful AI study companion in NugNotes, a note-taking app for students. You help students understand their study material, answer questions, and provide study assistance.
 
 Your personality:
 - Warm, encouraging, and concise
@@ -71,8 +72,9 @@ Your personality:
     systemPrompt += `## Lecture Type\nThis is a **${lectureType}** lecture. Tailor your explanations accordingly.\n\n`;
   }
 
-  if (transcript) {
-    systemPrompt += `## Lecture Transcript\nThe student has provided this transcript from their lecture recording:\n\n${transcript}\n\n`;
+  const documents = documentText?.trim().slice(0, CHAT_DOCUMENT_CHARS);
+  if (documents) {
+    systemPrompt += `## Uploaded Documents\nText extracted from the documents, photos and handwriting the student uploaded to this session:\n\n${documents}\n\n`;
   }
 
   // ── everything below here is volatile and must stay after the breakpoint ──
@@ -83,21 +85,21 @@ Your personality:
   }
 
   if (nuggetNotes) {
-    volatilePrompt += `## AI-Generated Key Points\nThese are key points automatically identified during recording:\n\n${nuggetNotes}\n\n`;
+    volatilePrompt += `## Nugget's Key Points\nKey points you pulled out of this session earlier:\n\n${nuggetNotes}\n\n`;
   }
 
   if (currentDateTime) {
     volatilePrompt += `## Current Date & Time\n${currentDateTime}\n\n`;
   }
 
-  if (!transcript && !notes && !nuggetNotes) {
-    volatilePrompt += `\nNote: The student hasn't included their transcript or notes in this conversation. You can still help with general study questions, but encourage them to start a recording or select a session for more specific help.\n`;
+  if (!documents && !notes && !nuggetNotes) {
+    volatilePrompt += `\nNote: The student hasn't included any notes or documents in this conversation. You can still help with general study questions, but encourage them to open a session, write some notes or upload a document for more specific help.\n`;
   }
 
-  // Only mark a breakpoint when there is a transcript worth caching. Haiku's
+  // Only mark a breakpoint when there are documents worth caching. Haiku's
   // minimum cacheable prefix is 4096 tokens — below that a breakpoint silently
   // does nothing, so short sessions just skip it.
-  const system: Anthropic.Messages.TextBlockParam[] = transcript
+  const system: Anthropic.Messages.TextBlockParam[] = documents
     ? [
         { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
         ...(volatilePrompt ? [{ type: 'text' as const, text: volatilePrompt }] : []),
@@ -111,7 +113,7 @@ export const nuggetChat = httpAction(async (_ctx, request) => {
   const {
     message,
     conversationHistory,
-    transcript,
+    documentText,
     notes,
     lectureType,
     nuggetNotes,
@@ -119,7 +121,7 @@ export const nuggetChat = httpAction(async (_ctx, request) => {
   } = await request.json();
 
   const system = buildChatSystemPrompt({
-    transcript,
+    documentText,
     notes,
     nuggetNotes,
     lectureType,

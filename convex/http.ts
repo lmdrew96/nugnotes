@@ -3,7 +3,6 @@ import { httpAction } from './_generated/server';
 import { examNuggetChat } from './examChat';
 import { mcpGetCourses, mcpGetSession, mcpListSessions, mcpSearchSessions } from './mcpApi';
 import { nuggetChat } from './nuggetChat';
-import { generateNuggetNotes } from './nuggetNotes';
 import { reportBug } from './reportBug';
 
 const http = httpRouter();
@@ -18,19 +17,6 @@ const corsHandler = httpAction(async () => {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-});
-
-// Nugget Notes (cadence set by the client — see DEFAULT_CONFIG)
-http.route({
-  path: '/nuggetNotes',
-  method: 'OPTIONS',
-  handler: corsHandler,
-});
-
-http.route({
-  path: '/nuggetNotes',
-  method: 'POST',
-  handler: generateNuggetNotes,
 });
 
 // Nugget Chat (Q&A about content)

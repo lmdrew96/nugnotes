@@ -3,7 +3,7 @@
  *
  * Sonnet-powered meta-context layer that indexes each session when added to an exam room.
  * Extracts structured topic indexes so downstream AI calls (chat, tools, games) get a
- * lightweight "brain" instead of raw transcripts — cheaper, more coherent, and smarter
+ * lightweight "brain" instead of every session's raw notes and documents — cheaper, more coherent, and smarter
  * about which session content is relevant per interaction.
  */
 
@@ -20,6 +20,7 @@ import {
 import { requireAuth } from './authHelpers';
 import { AI_MODEL_SONNET, callClaude } from './config';
 import { requireExamRoomMember } from './examRooms';
+import { buildMaterial } from './studyMaterial';
 import { extractJson } from './studyTools';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -53,11 +54,10 @@ export const getSessionForIndexing = internalQuery({
       .unique();
 
     const notesPlainText = sessionNotes?.plainText ?? session.notesPlainText ?? '';
-    const transcript = '';
 
     return {
       title: session.title,
-      transcript,
+      documentText: session.documentText ?? '',
       notesPlainText,
       lectureType: session.lectureType ?? 'general',
     };
@@ -169,15 +169,15 @@ export const getBrainContext = query({
           .unique();
 
         const plainText = sessionNotes?.plainText ?? session.notesPlainText ?? '';
-        const transcript = '';
+        const documentText = session.documentText ?? '';
 
         return {
           title: session.title ?? 'Untitled',
           hasIndex: !!link.topicIndex,
-          // Truncate for context window — first 2000 chars of notes + first 2000 of transcript
+          // Truncate for context window — first 2000 chars of notes + first 2000 of documents
           notesPreview: plainText.slice(0, 2000),
-          transcriptPreview: transcript.slice(0, 2000),
-          hasContent: !!(plainText || transcript),
+          documentPreview: documentText.slice(0, 2000),
+          hasContent: !!(plainText || documentText),
         };
       }),
     );
@@ -213,8 +213,8 @@ export const getBrainContext = query({
       if (session.notesPreview) {
         fallbackContext += `NOTES:\n${session.notesPreview}\n\n`;
       }
-      if (session.transcriptPreview) {
-        fallbackContext += `TRANSCRIPT:\n${session.transcriptPreview}\n\n`;
+      if (session.documentPreview) {
+        fallbackContext += `UPLOADED DOCUMENTS:\n${session.documentPreview}\n\n`;
       }
     }
 
@@ -240,8 +240,8 @@ export const getSessionContentForTopics = internalQuery({
     const topicSet = new Set(args.topics.map((t) => t.toLowerCase()));
     const relevantSessions: Array<{
       title: string;
-      transcript: string;
       notes: string;
+      documentText: string;
     }> = [];
 
     for (const link of links) {
@@ -278,8 +278,8 @@ export const getSessionContentForTopics = internalQuery({
             .unique();
           relevantSessions.push({
             title: session.title,
-            transcript: '',
             notes: sessionNotes?.plainText ?? session.notesPlainText ?? '',
+            documentText: session.documentText ?? '',
           });
         }
       }
@@ -303,8 +303,8 @@ export const getAllSessionContent = internalQuery({
     const sessions: Array<{
       sessionId: Id<'sessions'>;
       title: string;
-      transcript: string;
       notes: string;
+      documentText: string;
       lectureType: string;
     }> = [];
 
@@ -318,8 +318,8 @@ export const getAllSessionContent = internalQuery({
         sessions.push({
           sessionId: link.sessionId,
           title: session.title,
-          transcript: '',
           notes: sessionNotes?.plainText ?? session.notesPlainText ?? '',
+          documentText: session.documentText ?? '',
           lectureType: session.lectureType ?? 'general',
         });
       }
@@ -407,7 +407,7 @@ export const indexSession = internalAction({
       sessionId: args.sessionId,
     });
 
-    if (!session || (!session.transcript && !session.notesPlainText)) {
+    if (!session || (!session.documentText && !session.notesPlainText)) {
       // Nothing to index — save empty index
       const emptyIndex: TopicIndex = { topics: [], extractedAt: Date.now() };
       await ctx.runMutation(internal.examBrain.saveTopicIndex, {
@@ -418,17 +418,15 @@ export const indexSession = internalAction({
       return;
     }
 
-    // Build input — truncate to keep prompt reasonable
-    const transcriptSlice = session.transcript.slice(-6000);
-    const notesSlice = session.notesPlainText.slice(0, 3000);
-
-    let input = '';
-    if (transcriptSlice) input += `TRANSCRIPT:\n${transcriptSlice}\n\n`;
-    if (notesSlice) input += `NOTES:\n${notesSlice}\n`;
+    // Build input — truncated to keep the prompt reasonable
+    const input = buildMaterial(
+      { notes: session.notesPlainText, documentText: session.documentText },
+      9000,
+    );
 
     const prompt = `You are an academic content indexer for NugNotes, an ADHD-friendly study app.
 
-Analyze this lecture content and extract a structured topic index. For each major topic, list the key concepts, terms, and definitions covered.
+Analyze this study material and extract a structured topic index. For each major topic, list the key concepts, terms, and definitions covered.
 
 ${input}
 

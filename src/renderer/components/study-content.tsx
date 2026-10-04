@@ -302,10 +302,10 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
               Extracted Text
             </TabsTrigger>
           )}
-          {hasNuggetNotes && (
+          {(hasNuggetNotes || !readOnly) && (
             <TabsTrigger value="nugget-notes" className="gap-1.5 text-xs h-7 px-3">
               <Cat className="h-3 w-3" />
-              Nugget Notes
+              Key Points
             </TabsTrigger>
           )}
         </TabsList>
@@ -340,7 +340,10 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
         </TabsContent>
 
         <TabsContent value="nugget-notes" className="h-[calc(100%-2rem)] mt-0">
-          <StudyNuggetNotes notes={recording.nuggetNotes} />
+          <StudyNuggetNotes
+            notes={recording.nuggetNotes}
+            sessionId={readOnly ? undefined : (recording.id as Id<'sessions'>)}
+          />
         </TabsContent>
       </Tabs>
     </div>

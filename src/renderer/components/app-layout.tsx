@@ -12,12 +12,13 @@ import { Outlet } from '@tanstack/react-router';
 export function AppLayout() {
   useNotificationWatcher();
   usePresence();
-  const { activeSessionId, nuggetNotes, chatOpen, setChatOpen } = useSessionContext();
+  const { activeSessionId, chatOpen, setChatOpen } = useSessionContext();
 
   const session = useSession(activeSessionId);
 
+  const keyPoints = session?.nuggetNotes ?? [];
   const nuggetNotesText =
-    nuggetNotes.length > 0 ? nuggetNotes.map((n) => `- ${n.text}`).join('\n') : undefined;
+    keyPoints.length > 0 ? keyPoints.map((n) => `- ${n.text}`).join('\n') : undefined;
 
   return (
     <div className="app-bg-orbs flex h-screen flex-col">
@@ -27,6 +28,7 @@ export function AppLayout() {
       </main>
       <NuggetChat
         notes={session?.notesPlainText}
+        documentText={session?.documentText}
         sessionId={activeSessionId ?? undefined}
         lectureType={session?.lectureType}
         nuggetNotes={nuggetNotesText}
