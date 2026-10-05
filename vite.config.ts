@@ -112,7 +112,14 @@ export default defineConfig(({ mode }) => {
         // 'prompt', not 'autoUpdate': a new build waits for the user to apply it via
         // the update toast. Auto-activating could reload or strand a tab mid-lecture.
         registerType: 'prompt',
-        includeAssets: ['trippy-nuggy-baby-boy.PNG', 'nuggy-baby-boy.png', 'pwa-192x192.png', 'pwa-512x512.png', 'apple-touch-icon.png'],
+        includeAssets: [
+          'favicon.ico',
+          'favicon-48.png',
+          'nuggy-baby-boy.png',
+          'nugnotes-logo.png',
+          'apple-touch-icon.png',
+          'og-image.png',
+        ],
         manifest: {
           name: 'NugNotes',
           short_name: 'NugNotes',
@@ -125,12 +132,6 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: 'trippy-nuggy-baby-boy.PNG',
-              sizes: 'any',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
               src: 'pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
@@ -139,6 +140,13 @@ export default defineConfig(({ mode }) => {
               src: 'pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
+            },
+            {
+              // Logo inset on a soft swirl, inside Android's 80% safe circle.
+              src: 'pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
             },
           ],
         },

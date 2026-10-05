@@ -292,6 +292,23 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Landing hero: the swirl logo in a glowing circle, bobbing gently. */
+@keyframes hero-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.hero-logo {
+  border-radius: 9999px;
+  box-shadow: 0 0 40px var(--record-glow), 0 0 90px var(--record-glow);
+  animation: hero-bob 4s ease-in-out infinite;
+}
+
 .waveform-bar {
   animation: waveform 0.5s ease-in-out infinite;
 }
@@ -1016,6 +1033,9 @@ html body .bn-container[data-color-scheme] {
     animation: none;
   }
   .easter-egg-active {
+    animation: none;
+  }
+  .hero-logo {
     animation: none;
   }
 }

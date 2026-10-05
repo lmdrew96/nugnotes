@@ -3,15 +3,6 @@ import { SignIn } from '@clerk/clerk-react';
 import { useState } from 'react';
 import privacyContent from '../../../docs/PRIVACY_POLICY.md?raw';
 import tosContent from '../../../docs/TERMS_OF_SERVICE.md?raw';
-import { CatDisplay } from './cats/cat-display';
-
-const HERO_CATS: Array<{ variant: 'grey' | 'bengal' | 'siamese' | 'wizard' | 'tricolor' }> = [
-  { variant: 'grey' },
-  { variant: 'bengal' },
-  { variant: 'siamese' },
-  { variant: 'wizard' },
-  { variant: 'tricolor' },
-];
 
 const FEATURES = [
   {
@@ -97,26 +88,13 @@ export function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="flex flex-col items-center gap-8 px-6 pb-16 pt-20 text-center">
-        {/* Floating cats row */}
-        <div className="flex items-end gap-6">
-          {HERO_CATS.map((cat, i) => (
-            <div
-              key={cat.variant}
-              className="glass-enter"
-              style={{
-                transform: `scale(1.25) translateY(${i % 2 === 0 ? '0px' : '-2px'})`,
-                imageRendering: 'pixelated',
-                animationDelay: `${i * 0.08}s`,
-              }}
-            >
-              <CatDisplay
-                mood={i === 1 ? 'excited' : i === 3 ? 'happy' : 'studying'}
-                variant={cat.variant}
-                size="large"
-              />
-            </div>
-          ))}
-        </div>
+        <img
+          src="/nugnotes-logo.png"
+          alt="Nugget the cat bursting out of a swirl"
+          width={220}
+          height={220}
+          className="hero-logo glass-enter size-[220px]"
+        />
 
         <div className="mt-8 flex flex-col items-center gap-4">
           <div className="glass text-primary rounded-full px-4 py-1 text-xs font-medium uppercase tracking-widest">

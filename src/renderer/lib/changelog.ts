@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.0',
+    date: '2026-10-05',
+    title: 'Nugget, in full swirl',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'NugNotes has its own look: Nugget bursting out of a sage-and-rose swirl, on the home page, the app icon and the browser tab.',
+      },
+      {
+        kind: 'added',
+        text: 'Installing NugNotes on Android now gives a proper round app icon, and shared links show a NugNotes preview card.',
+      },
+    ],
+  },
+  {
     version: '0.6.1',
     date: '2026-10-05',
     title: 'Closed rooms close gently',
