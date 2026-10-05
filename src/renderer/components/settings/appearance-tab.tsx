@@ -1,7 +1,10 @@
 import { StudyBuddySection } from '@/components/settings/study-buddy-section';
-import type { Theme } from '@/components/theme-provider';
+import { type Theme, useTheme } from '@/components/theme-provider';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { useId } from 'react';
 
 interface ThemeOption {
   id: string;
@@ -17,6 +20,8 @@ interface AppearanceTabProps {
 }
 
 export function AppearanceTab({ visibleThemes, activeTheme, onSelectTheme }: AppearanceTabProps) {
+  const id = useId();
+  const { backgroundMotion, setBackgroundMotion } = useTheme();
   return (
     <div className="space-y-6">
       <div>
@@ -52,6 +57,23 @@ export function AppearanceTab({ visibleThemes, activeTheme, onSelectTheme }: App
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label htmlFor={`${id}-motion`} className="text-sm text-foreground">
+            Background motion
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Let the theme's background drift slowly behind your notes. Turn it off if it pulls your
+            eye.
+          </p>
+        </div>
+        <Switch
+          id={`${id}-motion`}
+          checked={backgroundMotion}
+          onCheckedChange={setBackgroundMotion}
+        />
       </div>
 
       <StudyBuddySection />

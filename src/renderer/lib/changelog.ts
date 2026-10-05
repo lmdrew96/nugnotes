@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-10-05',
+    title: 'Themes that breathe',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Every theme’s background now moves, gently: drifting orbs in Nugg’s Favorite, paw prints in Purring Pastels, stars and a pair of watching eyes in Void Kitty, an aurora in Chaos Cat. High-contrast themes stay still.',
+      },
+      {
+        kind: 'added',
+        text: 'New “Background motion” switch in Settings → Appearance, for days when you need everything to hold still.',
+      },
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-10-05',
     title: 'A new theme: Swirl',

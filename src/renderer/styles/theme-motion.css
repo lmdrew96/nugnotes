@@ -1,0 +1,129 @@
+/*
+ * Ambient background motion for each theme. Only the background layer
+ * (.app-bg-orbs::before / ::after) ever moves — panels, text and buttons stay
+ * put. Everything is slow (no cycle under ~20s, nothing flashes) and stops
+ * under prefers-reduced-motion or when "Background motion" is off in
+ * Settings → Appearance (ThemeProvider sets data-motion="off" on <html>).
+ * High-contrast themes have no motion on purpose.
+ * Swirl's own turning lives in theme-swirl.css.
+ */
+
+/* ── Nugg's Favorite: the two orbs drift and breathe ─────────────── */
+@keyframes orb-drift-a {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-8vw, 10vh) scale(1.12); }
+  100% { transform: translate(-3vw, -6vh) scale(0.94); }
+}
+@keyframes orb-drift-b {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10vw, -8vh) scale(0.92); }
+  100% { transform: translate(4vw, 5vh) scale(1.1); }
+}
+[data-theme="default"] .app-bg-orbs::before {
+  animation: orb-drift-a 25s ease-in-out infinite alternate;
+}
+[data-theme="default"] .app-bg-orbs::after {
+  animation: orb-drift-b 31s ease-in-out infinite alternate;
+}
+
+/* ── Purring Pastels: paw prints drift up and fade at the top ────── */
+@keyframes paws-rise {
+  to { transform: translateY(-360px); }
+}
+[data-theme="soft-focus"] .app-bg-orbs::after {
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: calc(100vh + 360px);
+  border-radius: 0;
+  filter: none;
+  opacity: 0.6;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='360' viewBox='0 0 260 360'%3E%3Cg transform='translate(60 70) rotate(-18) scale(1.0)' fill='%23e9a6c9'%3E%3Cellipse cx='0' cy='12' rx='15' ry='12'/%3E%3Cellipse cx='-16' cy='-8' rx='6' ry='8'/%3E%3Cellipse cx='-6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='16' cy='-8' rx='6' ry='8'/%3E%3C/g%3E%3Cg transform='translate(190 190) rotate(14) scale(0.85)' fill='%23a9d3c0'%3E%3Cellipse cx='0' cy='12' rx='15' ry='12'/%3E%3Cellipse cx='-16' cy='-8' rx='6' ry='8'/%3E%3Cellipse cx='-6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='16' cy='-8' rx='6' ry='8'/%3E%3C/g%3E%3Cg transform='translate(80 300) rotate(-6) scale(0.9)' fill='%23c8b4e8'%3E%3Cellipse cx='0' cy='12' rx='15' ry='12'/%3E%3Cellipse cx='-16' cy='-8' rx='6' ry='8'/%3E%3Cellipse cx='-6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='6' cy='-17' rx='6' ry='8'/%3E%3Cellipse cx='16' cy='-8' rx='6' ry='8'/%3E%3C/g%3E%3C/svg%3E") repeat;
+  -webkit-mask-image: linear-gradient(to top, black 55%, transparent);
+  mask-image: linear-gradient(to top, black 55%, transparent);
+  animation: paws-rise 40s linear infinite;
+}
+
+/* ── Void Kitty: twinkling stars, and cat eyes that slow-blink ───── */
+@keyframes stars-twinkle {
+  from { opacity: 0.45; }
+  to { opacity: 0.9; }
+}
+@keyframes eyes-blink {
+  0%, 55% { opacity: 0; transform: scaleY(1); }
+  62% { opacity: 0.75; transform: scaleY(1); }
+  74% { transform: scaleY(1); }
+  76% { transform: scaleY(0.08); }
+  79% { transform: scaleY(1); }
+  88% { opacity: 0.75; }
+  96%, 100% { opacity: 0; transform: scaleY(1); }
+}
+[data-theme="blackout"] .app-bg-orbs::after {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  filter: none;
+  opacity: 0.7;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Ccircle cx='235' cy='290' r='1.3' fill='%23b580ff' opacity='0.7'/%3E%3Ccircle cx='98' cy='266' r='1.3' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='232' cy='159' r='0.8' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='308' cy='206' r='1.3' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='274' cy='36' r='0.6' fill='%23e0e0e0' opacity='0.7'/%3E%3Ccircle cx='127' cy='311' r='0.6' fill='%23b580ff' opacity='0.9'/%3E%3Ccircle cx='229' cy='306' r='0.8' fill='%23e0e0e0' opacity='0.9'/%3E%3Ccircle cx='259' cy='6' r='0.6' fill='%23b580ff' opacity='0.9'/%3E%3Ccircle cx='212' cy='286' r='0.6' fill='%2380deea' opacity='0.9'/%3E%3Ccircle cx='121' cy='266' r='1' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='292' cy='59' r='1.3' fill='%23e0e0e0' opacity='0.9'/%3E%3Ccircle cx='201' cy='38' r='0.6' fill='%23e0e0e0' opacity='0.7'/%3E%3Ccircle cx='111' cy='30' r='1.3' fill='%23b580ff' opacity='1'/%3E%3Ccircle cx='218' cy='41' r='1.7' fill='%23e0e0e0' opacity='0.9'/%3E%3Ccircle cx='176' cy='48' r='1' fill='%2380deea' opacity='0.5'/%3E%3Ccircle cx='213' cy='64' r='0.8' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='9' cy='34' r='1.3' fill='%23b580ff' opacity='0.7'/%3E%3Ccircle cx='290' cy='100' r='1.3' fill='%23e0e0e0' opacity='0.7'/%3E%3Ccircle cx='218' cy='200' r='0.6' fill='%23b580ff' opacity='1'/%3E%3Ccircle cx='112' cy='4' r='1' fill='%2380deea' opacity='0.5'/%3E%3Ccircle cx='111' cy='99' r='1.3' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='78' cy='113' r='1.3' fill='%2380deea' opacity='0.5'/%3E%3Ccircle cx='316' cy='172' r='1' fill='%23b580ff' opacity='0.5'/%3E%3Ccircle cx='42' cy='50' r='0.8' fill='%23e0e0e0' opacity='0.5'/%3E%3Ccircle cx='311' cy='192' r='1' fill='%23b580ff' opacity='0.7'/%3E%3Ccircle cx='304' cy='251' r='1.7' fill='%23e0e0e0' opacity='1'/%3E%3C/svg%3E") repeat;
+  animation: stars-twinkle 20s ease-in-out infinite alternate;
+}
+[data-theme="blackout"] .app-bg-orbs::before {
+  width: 120px;
+  height: 40px;
+  top: auto;
+  bottom: 14%;
+  right: 6%;
+  border-radius: 0;
+  filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.6));
+  opacity: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Cg%3E%3Cpath d='M0 20 Q22 0 44 20 Q22 40 0 20 Z' fill='%2300f2ff'/%3E%3Cellipse cx='22' cy='20' rx='3.2' ry='13' fill='%23000'/%3E%3C/g%3E%3Cg transform='translate(76 0)'%3E%3Cpath d='M0 20 Q22 0 44 20 Q22 40 0 20 Z' fill='%2300f2ff'/%3E%3Cellipse cx='22' cy='20' rx='3.2' ry='13' fill='%23000'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+  animation: eyes-blink 40s ease-in-out infinite;
+}
+
+/* ── Chaos Cat: a magenta/cyan aurora shifting slowly ────────────── */
+@keyframes aurora-a {
+  0% { transform: translate(0, 0) scale(1); filter: blur(110px) hue-rotate(0deg); }
+  100% { transform: translate(-18vw, 22vh) scale(1.25); filter: blur(110px) hue-rotate(-25deg); }
+}
+@keyframes aurora-b {
+  0% { transform: translate(0, 0) scale(1.1); filter: blur(110px) hue-rotate(0deg); }
+  100% { transform: translate(20vw, -18vh) scale(0.9); filter: blur(110px) hue-rotate(25deg); }
+}
+[data-theme="chaos-cat"] .app-bg-orbs::before {
+  width: 70vw;
+  height: 45vh;
+  animation: aurora-a 30s ease-in-out infinite alternate;
+}
+[data-theme="chaos-cat"] .app-bg-orbs::after {
+  width: 75vw;
+  height: 50vh;
+  animation: aurora-b 37s ease-in-out infinite alternate;
+}
+
+/* ── Nyan Cat (secret): rainbow sparkles drifting across ─────────── */
+@keyframes sparkles-drift {
+  to { transform: translate(-300px, -300px); }
+}
+[data-theme="nyan-cat-dark"] .app-bg-orbs::after,
+[data-theme="nyan-cat-light"] .app-bg-orbs::after {
+  inset: 0 auto auto 0;
+  width: calc(100vw + 300px);
+  height: calc(100vh + 300px);
+  border-radius: 0;
+  filter: none;
+  opacity: 0.4;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cpath transform='translate(145 198)' fill='%23ff6ec7' d='M0 -9 Q1.6199999999999999 -1.6199999999999999 9 0 Q1.6199999999999999 1.6199999999999999 0 9 Q-1.6199999999999999 1.6199999999999999 -9 0 Q-1.6199999999999999 -1.6199999999999999 0 -9 Z'/%3E%3Cpath transform='translate(29 253)' fill='%23ffea00' d='M0 -5 Q0.8999999999999999 -0.8999999999999999 5 0 Q0.8999999999999999 0.8999999999999999 0 5 Q-0.8999999999999999 0.8999999999999999 -5 0 Q-0.8999999999999999 -0.8999999999999999 0 -5 Z'/%3E%3Cpath transform='translate(41 95)' fill='%237cff6b' d='M0 -5 Q0.8999999999999999 -0.8999999999999999 5 0 Q0.8999999999999999 0.8999999999999999 0 5 Q-0.8999999999999999 0.8999999999999999 -5 0 Q-0.8999999999999999 -0.8999999999999999 0 -5 Z'/%3E%3Cpath transform='translate(205 255)' fill='%234fd1ff' d='M0 -5 Q0.8999999999999999 -0.8999999999999999 5 0 Q0.8999999999999999 0.8999999999999999 0 5 Q-0.8999999999999999 0.8999999999999999 -5 0 Q-0.8999999999999999 -0.8999999999999999 0 -5 Z'/%3E%3Cpath transform='translate(209 67)' fill='%23b580ff' d='M0 -9 Q1.6199999999999999 -1.6199999999999999 9 0 Q1.6199999999999999 1.6199999999999999 0 9 Q-1.6199999999999999 1.6199999999999999 -9 0 Q-1.6199999999999999 -1.6199999999999999 0 -9 Z'/%3E%3Cpath transform='translate(142 21)' fill='%23ff9f43' d='M0 -9 Q1.6199999999999999 -1.6199999999999999 9 0 Q1.6199999999999999 1.6199999999999999 0 9 Q-1.6199999999999999 1.6199999999999999 -9 0 Q-1.6199999999999999 -1.6199999999999999 0 -9 Z'/%3E%3Cpath transform='translate(125 223)' fill='%23ff6ec7' d='M0 -7 Q1.26 -1.26 7 0 Q1.26 1.26 0 7 Q-1.26 1.26 -7 0 Q-1.26 -1.26 0 -7 Z'/%3E%3Cpath transform='translate(108 214)' fill='%23ffea00' d='M0 -5 Q0.8999999999999999 -0.8999999999999999 5 0 Q0.8999999999999999 0.8999999999999999 0 5 Q-0.8999999999999999 0.8999999999999999 -5 0 Q-0.8999999999999999 -0.8999999999999999 0 -5 Z'/%3E%3Cpath transform='translate(51 86)' fill='%237cff6b' d='M0 -9 Q1.6199999999999999 -1.6199999999999999 9 0 Q1.6199999999999999 1.6199999999999999 0 9 Q-1.6199999999999999 1.6199999999999999 -9 0 Q-1.6199999999999999 -1.6199999999999999 0 -9 Z'/%3E%3C/svg%3E") repeat;
+  animation: sparkles-drift 45s linear infinite;
+}
+
+/* ── Off switches (doubled :root so these outrank every theme rule) ── */
+:root:root[data-motion="off"] .app-bg-orbs::before,
+:root:root[data-motion="off"] .app-bg-orbs::after {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:root .app-bg-orbs::before,
+  :root:root .app-bg-orbs::after {
+    animation: none;
+  }
+}

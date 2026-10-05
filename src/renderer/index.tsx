@@ -8,6 +8,7 @@ import { ThemeProvider } from './components/theme-provider';
 import { initAppUpdate } from './lib/app-update';
 import './styles/globals.css';
 import './styles/theme-swirl.css';
+import './styles/theme-motion.css';
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

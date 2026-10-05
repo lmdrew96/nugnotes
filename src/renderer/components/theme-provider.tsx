@@ -14,7 +14,12 @@ export type Theme =
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  /** Whether the theme's background animates (Settings → Appearance). */
+  backgroundMotion: boolean;
+  setBackgroundMotion: (on: boolean) => void;
 }
+
+const MOTION_KEY = 'nugnotes-background-motion';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -34,13 +39,27 @@ export function ThemeProvider({ children, defaultTheme = 'default' }: ThemeProvi
     return defaultTheme;
   });
 
+  // Per device, like the theme: on unless this device turned it off.
+  const [backgroundMotion, setBackgroundMotion] = useState(() =>
+    typeof window === 'undefined' ? true : localStorage.getItem(MOTION_KEY) !== 'off',
+  );
+
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
     localStorage.setItem('nugnotes-theme', theme);
   }, [theme]);
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  useEffect(() => {
+    document.documentElement.setAttribute('data-motion', backgroundMotion ? 'on' : 'off');
+    localStorage.setItem(MOTION_KEY, backgroundMotion ? 'on' : 'off');
+  }, [backgroundMotion]);
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, backgroundMotion, setBackgroundMotion }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {
