@@ -20,7 +20,7 @@ import { buildExamInput } from './examToolPrompts';
 import type { LectureType } from './prompts';
 import { enforceLimit } from './rateLimits';
 import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
-import { postSystemMessage, requireRoomHost, requireRoomMember } from './studyRooms';
+import { findRoomMember, postSystemMessage, requireRoomHost } from './studyRooms';
 import { getJeopardyPrompt, getQuizPrompt } from './studyToolPrompts';
 import { callClaude, callClaudeWithLecture, extractJson } from './studyTools';
 
@@ -88,7 +88,8 @@ export const getActiveGame = query({
   args: { roomId: v.id('studyRooms') },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
-    await requireRoomMember(ctx, args.roomId, userId);
+    // Null, not an error, once the room has closed under an open view.
+    if (!(await findRoomMember(ctx, args.roomId, userId))) return null;
 
     // Find a non-finished game for this room
     const games = await ctx.db
@@ -183,9 +184,7 @@ export const getGameResults = query({
     const game = await ctx.db.get(args.gameId);
     if (!game) return null;
 
-    if (game.roomId) {
-      await requireRoomMember(ctx, game.roomId, userId);
-    }
+    if (game.roomId && !(await findRoomMember(ctx, game.roomId, userId))) return null;
 
     const players = await ctx.db
       .query('studyGamePlayers')

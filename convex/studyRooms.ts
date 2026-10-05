@@ -11,11 +11,20 @@ import { verifyFriendship } from './messagingHelpers';
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-export async function requireRoomMember(ctx: QueryCtx, roomId: Id<'studyRooms'>, userId: string) {
-  const member = await ctx.db
+/**
+ * The caller's membership row, or null. Queries an open room view subscribes
+ * to return null instead of throwing when this is null: closing a room deletes
+ * every member row, so anyone still looking at it is suddenly not a member.
+ */
+export async function findRoomMember(ctx: QueryCtx, roomId: Id<'studyRooms'>, userId: string) {
+  return await ctx.db
     .query('studyRoomMembers')
     .withIndex('by_room_user', (q) => q.eq('roomId', roomId).eq('userId', userId))
     .unique();
+}
+
+export async function requireRoomMember(ctx: QueryCtx, roomId: Id<'studyRooms'>, userId: string) {
+  const member = await findRoomMember(ctx, roomId, userId);
   if (!member) throw new ConvexError('Not a room member');
   return member;
 }
@@ -92,15 +101,15 @@ export const listMyRooms = query({
   },
 });
 
-/** Get full room data with enriched members. */
+/** Get full room data with enriched members. Null once the caller isn't a member (e.g. the room closed). */
 export const getRoom = query({
   args: { roomId: v.id('studyRooms') },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
-    await requireRoomMember(ctx, args.roomId, userId);
+    if (!(await findRoomMember(ctx, args.roomId, userId))) return null;
 
     const room = await ctx.db.get(args.roomId);
-    if (!room) throw new ConvexError('Room not found');
+    if (!room) return null;
 
     const memberDocs = await ctx.db
       .query('studyRoomMembers')
@@ -131,12 +140,12 @@ export const getRoom = query({
   },
 });
 
-/** Get room chat messages (last 100). */
+/** Get room chat messages (last 100). Null once the caller isn't a member. */
 export const getRoomMessages = query({
   args: { roomId: v.id('studyRooms') },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
-    await requireRoomMember(ctx, args.roomId, userId);
+    if (!(await findRoomMember(ctx, args.roomId, userId))) return null;
 
     const allMessages = await ctx.db
       .query('studyRoomMessages')
@@ -187,7 +196,7 @@ export const getRoomPinnedSession = query({
   args: { roomId: v.id('studyRooms') },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
-    await requireRoomMember(ctx, args.roomId, userId);
+    if (!(await findRoomMember(ctx, args.roomId, userId))) return null;
 
     const room = await ctx.db.get(args.roomId);
     if (!room || !room.pinnedSessionId) return null;

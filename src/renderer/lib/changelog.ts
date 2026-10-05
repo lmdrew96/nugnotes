@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.6.1',
+    date: '2026-10-05',
+    title: 'Closed rooms close gently',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'If the host closes a room while you’re in it, you now see “This room has closed” with a way back, instead of an error screen.',
+      },
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-10-05',
     title: 'See classmates in room notes',

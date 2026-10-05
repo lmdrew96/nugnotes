@@ -54,10 +54,23 @@ export function RoomView({ roomId }: RoomViewProps) {
   // Left panel tab
   const [activeTab, setActiveTab] = useState<'session' | 'notes'>('session');
 
-  if (roomLoading || !room) {
+  if (roomLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">Loading room...</p>
+      </div>
+    );
+  }
+
+  // No longer a member: the host closed the room (or you were removed).
+  if (!room) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <DoorOpen className="h-8 w-8 text-muted-foreground" aria-hidden />
+        <p className="text-sm text-foreground">This room has closed.</p>
+        <Button variant="outline" size="sm" onClick={() => navigate({ to: '/rooms' })}>
+          Back to rooms
+        </Button>
       </div>
     );
   }
