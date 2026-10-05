@@ -33,6 +33,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.5.1',
+    label: '0.5.0 – 0.5.1',
+    date: '2026-10-05',
+    title: 'Pick your study buddy',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Choose your study buddy’s cat and give it a name in Settings → Appearance. Triple-click the NugNotes title to call it.',
+      },
+      {
+        kind: 'fixed',
+        text: 'Undo puts your cursor back where the change was, instead of jumping to the start of the next line.',
+      },
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-10-04',
     title: 'A new notes editor',

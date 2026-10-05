@@ -1,6 +1,6 @@
 {
   "name": "nugnotes",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "ADHD-friendly study app: notes, documents and handwriting, with Nugget to help you study",
   "license": "AGPL-3.0-only",
   "private": true,

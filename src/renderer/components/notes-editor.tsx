@@ -18,6 +18,7 @@ import { attachConvexSync } from '../../editor/convex-provider';
 import { blocksToPlainText } from '../../editor/plain-text';
 import { macSelectionShortcuts, notesSchema } from '../../editor/schema';
 import { NotesFormattingToolbar } from '../../editor/toolbar';
+import { undoSelection } from '../../editor/undo-selection';
 
 /** Quiet time after an edit before the plain-text and markdown copies are rebuilt. */
 const EXTRACT_DEBOUNCE_MS = 1000;
@@ -92,7 +93,7 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
   const editor = useCreateBlockNote(
     withCollaboration({
       schema: notesSchema,
-      extensions: [macSelectionShortcuts],
+      extensions: [macSelectionShortcuts, undoSelection],
       uploadFile: async (file: File) =>
         `${import.meta.env.VITE_R2_PUBLIC_URL}/${await uploadRef.current(file)}`,
       collaboration: {
