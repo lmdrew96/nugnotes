@@ -11,14 +11,17 @@ import { ConvexClient } from 'convex/browser';
 import { useMutation } from 'convex/react';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { yUndoPluginKey } from 'y-prosemirror';
+import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { api } from '../../../convex/_generated/api';
 import type { DocKey } from '../../../convex/ydocKeys';
+import { attachConvexAwareness } from '../../editor/convex-awareness';
 import { attachConvexSync } from '../../editor/convex-provider';
 import { blocksToPlainText } from '../../editor/plain-text';
 import { macSelectionShortcuts, notesSchema } from '../../editor/schema';
 import { NotesFormattingToolbar } from '../../editor/toolbar';
 import { undoSelection } from '../../editor/undo-selection';
+import { useUserProfile } from '../hooks/use-user-profile';
 
 /** Quiet time after an edit before the plain-text and markdown copies are rebuilt. */
 const EXTRACT_DEBOUNCE_MS = 1000;
@@ -32,6 +35,23 @@ const DARK_THEMES = new Set<Theme>([
   'high-contrast-dark',
   'nyan-cat-dark',
 ]);
+
+/** Theme text colours a classmate's cursor can take (--font-color-1 is body text). */
+const CURSOR_COLOR_VARS = [2, 3, 4, 5, 6, 7, 8].map((n) => `--font-color-${n}`);
+/** Longest a leaving editor waits to clear its cursor before closing the connection. */
+const LEAVE_WAIT_MS = 1000;
+
+/**
+ * This student's cursor colour in room notes: one of the theme's text colours,
+ * always the same one for the same student. Resolved to the hex value, which
+ * BlockNote needs to tint the selection.
+ */
+const cursorColor = (userId: string): string => {
+  let hash = 0;
+  for (const ch of userId) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const variable = CURSOR_COLOR_VARS[hash % CURSOR_COLOR_VARS.length];
+  return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+};
 
 type Connection = 'connecting' | 'synced' | 'degraded' | 'failed';
 
@@ -80,7 +100,19 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
   const { user } = useUser();
   const { theme } = useTheme();
   const claimRoom = useMutation(api.ydoc.claimRoom);
+  const { profile } = useUserProfile();
   const [ydoc] = useState(() => new Y.Doc());
+  // Who's where in study-room notes; synced only for room notes (below).
+  const [awareness] = useState(() => new Awareness(ydoc));
+  // Destroyed a tick after unmount, so a remount (StrictMode does one in dev)
+  // can cancel it — a destroyed awareness can't share a cursor again.
+  const destroyAwareness = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    clearTimeout(destroyAwareness.current);
+    return () => {
+      destroyAwareness.current = setTimeout(() => awareness.destroy(), 0);
+    };
+  }, [awareness]);
   const [openError, setOpenError] = useState<string | null>(null);
 
   // Images dropped, pasted or picked in the editor go to R2 and are shown from
@@ -98,7 +130,8 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
         `${import.meta.env.VITE_R2_PUBLIC_URL}/${await uploadRef.current(file)}`,
       collaboration: {
         fragment: ydoc.getXmlFragment(FRAGMENT),
-        user: { name: user?.firstName ?? 'Classmate', color: '#d97706' },
+        user: { name: 'Classmate', color: '' },
+        provider: { awareness },
       },
     }),
     [ydoc],
@@ -116,6 +149,19 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
       editor.registerExtension(YUndoExtension());
     }
   });
+
+  // What classmates see on this student's cursor in room notes. The colour is
+  // read after a frame, once ThemeProvider has applied the new theme.
+  const cursorName = profile?.displayName || user?.firstName || 'Classmate';
+  const userId = user?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: theme changes the colour cursorColor reads from CSS
+  useEffect(() => {
+    if (!userId) return;
+    const frame = requestAnimationFrame(() => {
+      awareness.setLocalStateField('user', { name: cursorName, color: cursorColor(userId) });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [awareness, cursorName, userId, theme]);
 
   // ---- sync with Convex ----
   const [connection, setConnection] = useState<Connection>('connecting');
@@ -159,6 +205,7 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
   useEffect(() => {
     let cancelled = false;
     let sync: { destroy(): Promise<void> } | null = null;
+    let cursors: { destroy(): Promise<void> } | null = null;
     const setState = (state: Connection) => {
       console.debug(`NugNotes: notes sync ${connectionRef.current} → ${state}`);
       connectionRef.current = state;
@@ -201,6 +248,9 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
             unpushed.current = status.unpushed;
           },
         });
+        if (docKey.startsWith('room:')) {
+          cursors = attachConvexAwareness({ client, docKey, awareness });
+        }
       })
       .catch((error) => {
         console.error("NugNotes: couldn't open the notes editor", error);
@@ -209,10 +259,15 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
 
     return () => {
       cancelled = true;
-      // destroy() sends any edits still waiting, then closes the connection.
-      void sync?.destroy();
+      // Clear this cursor for classmates first (briefly — it goes stale on its
+      // own anyway), then send any edits still waiting and close the connection.
+      const leaving = cursors?.destroy() ?? Promise.resolve();
+      void Promise.race([
+        leaving,
+        new Promise((resolve) => setTimeout(resolve, LEAVE_WAIT_MS)),
+      ]).finally(() => sync?.destroy());
     };
-  }, [claimRoom, docKey, editor, fetchToken, ydoc]);
+  }, [awareness, claimRoom, docKey, editor, fetchToken, ydoc]);
 
   const unsynced = connection === 'degraded' || connection === 'failed';
 

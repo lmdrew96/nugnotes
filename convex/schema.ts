@@ -393,6 +393,19 @@ export default defineSchema({
     compactionScheduled: v.boolean(),
   }).index('by_doc', ['docKey']),
 
+  // Who's where in a study room's shared notes (convex/ydocAwareness.ts): one
+  // row per open editor tab, holding its Yjs awareness state (name, colour,
+  // cursor). Ephemeral — removed when the tab leaves, ignored once stale.
+  ydocAwareness: defineTable({
+    docKey: v.string(),
+    userId: v.string(),
+    clientId: v.number(), // the tab's Y.Doc clientID
+    state: v.bytes(), // y-protocols awareness update for that client
+    updatedAt: v.number(),
+  })
+    .index('by_doc', ['docKey'])
+    .index('by_doc_client', ['docKey', 'clientId']),
+
   // API keys for MCP server and third-party integrations
   apiKeys: defineTable({
     userId: v.string(),

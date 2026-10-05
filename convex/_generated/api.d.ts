@@ -44,6 +44,7 @@ import type * as studyTools from "../studyTools.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as weakSpots from "../weakSpots.js";
 import type * as ydoc from "../ydoc.js";
+import type * as ydocAwareness from "../ydocAwareness.js";
 import type * as ydocKeys from "../ydocKeys.js";
 
 import type {
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   userProfiles: typeof userProfiles;
   weakSpots: typeof weakSpots;
   ydoc: typeof ydoc;
+  ydocAwareness: typeof ydocAwareness;
   ydocKeys: typeof ydocKeys;
 }>;
 

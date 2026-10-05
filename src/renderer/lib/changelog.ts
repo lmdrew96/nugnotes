@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.6.0',
+    date: '2026-10-05',
+    title: 'See classmates in room notes',
+    changes: [
+      {
+        kind: 'added',
+        text: 'In a study room’s notes you can see where everyone else is typing — each classmate gets a named cursor in one of your theme’s colours.',
+      },
+    ],
+  },
+  {
     version: '0.5.1',
     label: '0.5.0 – 0.5.1',
     date: '2026-10-05',
