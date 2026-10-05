@@ -1,3 +1,4 @@
+import { StudyBuddySection } from '@/components/settings/study-buddy-section';
 import type { Theme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
@@ -17,7 +18,7 @@ interface AppearanceTabProps {
 
 export function AppearanceTab({ visibleThemes, activeTheme, onSelectTheme }: AppearanceTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h3 className="mb-3 text-sm font-medium text-foreground">Theme</h3>
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(7rem,1fr))]">
@@ -52,6 +53,8 @@ export function AppearanceTab({ visibleThemes, activeTheme, onSelectTheme }: App
           ))}
         </div>
       </div>
+
+      <StudyBuddySection />
     </div>
   );
 }

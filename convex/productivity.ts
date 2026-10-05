@@ -1,8 +1,10 @@
-import { v } from 'convex/values';
+import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 
 // ─── Settings ────────────────────────────────────────────────
+
+const BUDDY_NAME_MAX_LENGTH = 24;
 
 const DEFAULT_SETTINGS = {
   theme: 'default',
@@ -17,6 +19,8 @@ const DEFAULT_SETTINGS = {
   tosAcceptedAt: undefined as number | undefined,
   tosVersion: undefined as string | undefined,
   onboardingDismissedAt: undefined as number | undefined,
+  buddyVariant: undefined as string | undefined,
+  buddyName: undefined as string | undefined,
 };
 
 export const getSettings = query({
@@ -49,9 +53,18 @@ export const updateSettings = mutation({
     audioRetentionMonths: v.optional(v.number()),
     timezone: v.optional(v.string()),
     onboardingDismissedAt: v.optional(v.number()),
+    buddyVariant: v.optional(v.string()),
+    buddyName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
+    if (args.buddyName !== undefined) {
+      const name = args.buddyName.trim();
+      if (!name || name.length > BUDDY_NAME_MAX_LENGTH) {
+        throw new ConvexError(`Buddy name must be 1–${BUDDY_NAME_MAX_LENGTH} characters`);
+      }
+      args.buddyName = name;
+    }
     const existing = await ctx.db
       .query('userSettings')
       .withIndex('by_user', (q) => q.eq('userId', userId))

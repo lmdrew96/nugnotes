@@ -38,6 +38,14 @@ export const CAT_VARIANTS: { id: CatVariant; label: string }[] = [
   { id: 'xmas', label: 'Holiday' },
 ];
 
+export const isCatVariant = (value: unknown): value is CatVariant =>
+  CAT_VARIANTS.some((variant) => variant.id === value);
+
+/** The study buddy defaults to Nugget, a grey tabby. */
+export const DEFAULT_BUDDY_VARIANT: CatVariant = 'grey';
+export const DEFAULT_BUDDY_NAME = 'Nugget';
+export const BUDDY_NAME_MAX_LENGTH = 24;
+
 /** Sprite animation type — maps to a PNG file per variant */
 type SpriteAnimation = 'idle' | 'idle2' | 'sleep' | 'sitting' | 'run' | 'jump' | 'attack' | 'hurt';
 

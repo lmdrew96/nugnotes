@@ -63,6 +63,9 @@ export default defineSchema({
     tosVersion: v.optional(v.string()),
     timezone: v.optional(v.string()),
     onboardingDismissedAt: v.optional(v.number()),
+    // Study buddy easter egg. Absent reads as the grey cat named Nugget.
+    buddyVariant: v.optional(v.string()),
+    buddyName: v.optional(v.string()),
   }).index('by_user', ['userId']),
 
   // Daily study stats (one row per user per day)

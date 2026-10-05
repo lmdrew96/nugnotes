@@ -1,12 +1,14 @@
 import { CatDisplay } from '@/components/cats/cat-display';
-import type { CatMood, CatVariant } from '@/components/cats/cat-sprites';
+import {
+  type CatMood,
+  DEFAULT_BUDDY_NAME,
+  DEFAULT_BUDDY_VARIANT,
+  isCatVariant,
+} from '@/components/cats/cat-sprites';
+import { useStudySettings } from '@/hooks/use-productivity';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useTripleClick } from './use-triple-click';
-
-/** Nugget is a grey tabby. */
-const BUDDY_VARIANT: CatVariant = 'grey';
-const BUDDY_NAME = 'Nugget';
 
 const STORAGE_KEY = 'nugnotes-study-buddy-active';
 const TRIGGER_SELECTOR = '[data-easter-egg-trigger]';
@@ -19,9 +21,18 @@ const FLIP_DEADZONE = 5;
 
 /**
  * Cursor-following cat companion. Toggled on/off by triple-clicking the app
- * title.
+ * title. The cat and its name come from Settings → Appearance → Study buddy.
  */
 export function StudyBuddy() {
+  const { settings } = useStudySettings();
+  const buddyVariant = isCatVariant(settings?.buddyVariant)
+    ? settings.buddyVariant
+    : DEFAULT_BUDDY_VARIANT;
+  const buddyName = settings?.buddyName || DEFAULT_BUDDY_NAME;
+  // Read inside the toast effect without re-firing it when the name changes.
+  const buddyNameRef = useRef(buddyName);
+  buddyNameRef.current = buddyName;
+
   const [active, setActive] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(STORAGE_KEY) === 'true';
@@ -85,7 +96,7 @@ export function StudyBuddy() {
   useEffect(() => {
     if (!active || !userToggledRef.current) return;
     userToggledRef.current = false;
-    toast(`✨ ${BUDDY_NAME} is here to help! ✨`);
+    toast(`✨ ${buddyNameRef.current} is here to help! ✨`);
   }, [active]);
 
   // Mouse tracking + animation loop — only runs while active.
@@ -163,7 +174,7 @@ export function StudyBuddy() {
 
   return (
     <div ref={spriteRef} className="study-buddy-sprite" aria-hidden="true">
-      <CatDisplay mood={mood} variant={BUDDY_VARIANT} size="small" />
+      <CatDisplay mood={mood} variant={buddyVariant} size="small" />
     </div>
   );
 }
