@@ -2,6 +2,7 @@ import { type ReactNode, createContext, useContext, useEffect, useState } from '
 
 export type Theme =
   | 'default'
+  | 'swirl'
   | 'soft-focus'
   | 'blackout'
   | 'chaos-cat'
@@ -53,6 +54,7 @@ export function useTheme() {
 function isValidTheme(value: string): value is Theme {
   return [
     'default',
+    'swirl',
     'soft-focus',
     'blackout',
     'chaos-cat',

@@ -1,0 +1,109 @@
+/*
+ * Swirl — built from the NugNotes logo: Nugget's swirl of sage, dusty rose,
+ * lavender and cream, on a deep forest-plum night.
+ *
+ * What makes it more than a palette:
+ *   - the background is the swirl itself (wavy concentric bands, an SVG
+ *     warped by a turbulence filter), faint behind the glass, turning slowly;
+ *   - sage-tinted frosted glass with a dusty-rose rim and a lavender glow;
+ *   - rounder corners and pill-shaped primary buttons.
+ * Every text/background pair here passes WCAG AA (lowest is 6.0:1).
+ */
+[data-theme="swirl"] {
+  --background: #1b2420;
+  --foreground: #f3ecf6;
+  --card: #25302a;
+  --card-foreground: #f3ecf6;
+  --popover: #25302a;
+  --popover-foreground: #f3ecf6;
+  --primary: #8fc49b;
+  --primary-foreground: #13201a;
+  --secondary: #2e2638;
+  --secondary-foreground: #cdb8ee;
+  --muted: #2a322d;
+  --muted-foreground: #b8aec6;
+  --accent: #d98f8f;
+  --accent-foreground: #21141a;
+  --destructive: #f08080;
+  --destructive-foreground: #1f0c0c;
+  --success: #8fc49b;
+  --success-foreground: #13201a;
+  --border: #3d3a40;
+  --input: #25302a;
+  --ring: #cdb8ee;
+  --record: #8fc49b;
+  --record-glow: rgba(143, 196, 155, 0.35);
+  --waveform: #cdb8ee;
+  --sidebar: #1f2924;
+  --sidebar-foreground: #f3ecf6;
+  --sidebar-primary: #8fc49b;
+  --sidebar-primary-foreground: #13201a;
+  --sidebar-accent: #d98f8f;
+  --sidebar-accent-foreground: #21141a;
+  --sidebar-border: #3d3a40;
+  --sidebar-ring: #cdb8ee;
+  --radius: 1rem;
+
+  /* Glass: sage-tinted, dusty-rose rim, lavender glow */
+  --glass-bg: rgba(37, 52, 44, 0.62);
+  --glass-bg-heavy: rgba(37, 52, 44, 0.82);
+  --glass-bg-light: rgba(143, 196, 155, 0.1);
+  --glass-blur: 22px;
+  --glass-blur-heavy: 30px;
+  --glass-blur-light: 12px;
+  --glass-border: rgba(217, 143, 143, 0.3);
+  --glass-border-strong: rgba(217, 143, 143, 0.55);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --glass-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --glass-shadow-inset: inset 0 1px 0 rgba(243, 236, 246, 0.06);
+  --glass-glow: rgba(205, 184, 238, 0.18);
+  --glass-glow-strong: rgba(205, 184, 238, 0.34);
+  --app-bg-from: #17201c;
+  --app-bg-via: #1b2420;
+  --app-bg-to: #2a2233;
+  --orb-opacity: 0.24;
+
+  --font-color-1: #f3ecf6;
+  --font-color-2: #8fc49b;
+  --font-color-3: #e09a9a;
+  --font-color-4: #cdb8ee;
+  --font-color-5: #7fc8a9;
+  --font-color-6: #d4a0cc;
+  --font-color-7: #f2b58e;
+  --font-color-8: #e6c870;
+}
+
+/* The swirl replaces the two soft orbs: one large layer, centred and bigger
+ * than the viewport so its corners stay covered while it turns. */
+@keyframes swirl-turn {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+[data-theme="swirl"] .app-bg-orbs::before {
+  width: 160vmax;
+  height: 160vmax;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  border-radius: 0;
+  filter: none;
+  transform: translate(-50%, -50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000'%3E%3Cfilter id='w' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004' numOctaves='2' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='190'/%3E%3C/filter%3E%3Cg fill='none' stroke-width='57' filter='url(%23w)'%3E%3Ccircle cx='500' cy='500' r='28' stroke='%238fc49b'/%3E%3Ccircle cx='500' cy='500' r='84' stroke='%23f3ecf6'/%3E%3Ccircle cx='500' cy='500' r='140' stroke='%23d98f8f'/%3E%3Ccircle cx='500' cy='500' r='196' stroke='%23cdb8ee'/%3E%3Ccircle cx='500' cy='500' r='252' stroke='%234f7d63'/%3E%3Ccircle cx='500' cy='500' r='308' stroke='%23a05a6e'/%3E%3Ccircle cx='500' cy='500' r='364' stroke='%23f3ecf6'/%3E%3Ccircle cx='500' cy='500' r='420' stroke='%238fc49b'/%3E%3Ccircle cx='500' cy='500' r='476' stroke='%23cdb8ee'/%3E%3Ccircle cx='500' cy='500' r='532' stroke='%23d98f8f'/%3E%3Ccircle cx='500' cy='500' r='588' stroke='%238fc49b'/%3E%3Ccircle cx='500' cy='500' r='644' stroke='%23f3ecf6'/%3E%3Ccircle cx='500' cy='500' r='700' stroke='%23d98f8f'/%3E%3Ccircle cx='500' cy='500' r='756' stroke='%23cdb8ee'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat;
+  animation: swirl-turn 90s linear infinite;
+}
+
+[data-theme="swirl"] .app-bg-orbs::after {
+  display: none;
+}
+
+[data-theme="swirl"] [data-slot="button"].bg-primary {
+  border-radius: 9999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="swirl"] .app-bg-orbs::before {
+    animation: none;
+  }
+}

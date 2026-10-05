@@ -32,6 +32,7 @@ const FRAGMENT = 'blocknote';
 const DARK_THEMES = new Set<Theme>([
   'blackout',
   'chaos-cat',
+  'swirl',
   'high-contrast-dark',
   'nyan-cat-dark',
 ]);

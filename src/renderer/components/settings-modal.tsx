@@ -46,6 +46,7 @@ const categories = [
 
 const themes = [
   { id: 'default', name: "Nugg's Favorite", colors: ['#244952', '#1A3338', '#88739E', '#DEA549'] },
+  { id: 'swirl', name: 'Swirl', colors: ['#1B2420', '#8FC49B', '#D98F8F', '#CDB8EE'] },
   {
     id: 'soft-focus',
     name: 'Purring Pastels',

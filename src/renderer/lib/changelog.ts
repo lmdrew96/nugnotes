@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-10-05',
+    title: 'A new theme: Swirl',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Swirl, a new theme made from Nugget’s logo: sage, dusty rose and lavender on a deep forest night, with the swirl itself turning slowly behind everything. Pick it in Settings → Appearance. It holds still if your device asks for less motion.',
+      },
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-10-05',
     title: 'Nugget, in full swirl',
