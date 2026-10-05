@@ -1,106 +1,38 @@
+import { type Theme, useTheme } from '@/components/theme-provider';
 import { registerPendingSaveFlush } from '@/lib/pending-save';
-import { useAuth } from '@clerk/clerk-react';
-import { SuperDocEditor, type SuperDocReadyEvent } from '@superdoc-dev/react';
+import { YUndoExtension, withCollaboration } from '@blocknote/core/yjs';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/shadcn';
+import { useUploadFile } from '@convex-dev/r2/react';
+import '@blocknote/shadcn/style.css';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { useBlocker } from '@tanstack/react-router';
-import '@superdoc-dev/react/style.css';
+import { ConvexClient } from 'convex/browser';
 import { useMutation } from 'convex/react';
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { yUndoPluginKey } from 'y-prosemirror';
+import * as Y from 'yjs';
 import { api } from '../../../convex/_generated/api';
 import type { DocKey } from '../../../convex/ydocKeys';
-import {
-  SUPERDOC_FONT_OPTIONS,
-  SUPERDOC_TEMPLATE_URL,
-  superDocFontsConfig,
-} from '../../superdoc/fonts';
-import { normalizeSuperDocMarkdown } from '../../superdoc/markdown';
-import {
-  SAVE_STATUS_CHANNEL,
-  type SaveStatusMessage,
-  isNoteSaved,
-} from '../../superdoc/save-status';
+import { attachConvexSync } from '../../editor/convex-provider';
+import { blocksToPlainText } from '../../editor/plain-text';
+import { macSelectionShortcuts, notesSchema } from '../../editor/schema';
+import { NotesFormattingToolbar } from '../../editor/toolbar';
 
-/** Built by scripts/build-superdoc-assets.mjs. */
-const COLLAB_WORKER_URL = '/superdoc/collab-worker.js';
 /** Quiet time after an edit before the plain-text and markdown copies are rebuilt. */
 const EXTRACT_DEBOUNCE_MS = 1000;
-/** How long to wait before re-claiming a room another tab is still creating. */
-const CLAIM_RETRY_MS = 2000;
 /** Longest we hold navigation waiting for the last edit to save. */
 const SAVE_WAIT_MS = 4000;
-
-/** Keys that change the note (anything that isn't pure navigation or a modifier). */
-const NON_EDITING_KEYS = new Set([
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'Home',
-  'End',
-  'PageUp',
-  'PageDown',
-  'Shift',
-  'Control',
-  'Alt',
-  'Meta',
-  'CapsLock',
-  'Escape',
-  'Tab',
-  'F5',
+/** Where BlockNote keeps the note inside its Y.Doc. */
+const FRAGMENT = 'blocknote';
+const DARK_THEMES = new Set<Theme>([
+  'blackout',
+  'chaos-cat',
+  'high-contrast-dark',
+  'nyan-cat-dark',
 ]);
-const isEditingKey = (e: KeyboardEvent) => {
-  if (NON_EDITING_KEYS.has(e.key)) return false;
-  // Shortcuts that don't edit (copy, select all, find, …).
-  if (
-    (e.metaKey || e.ctrlKey) &&
-    !['v', 'x', 'z', 'y', 'b', 'i', 'u'].includes(e.key.toLowerCase())
-  ) {
-    return false;
-  }
-  return true;
-};
 
-type RoomMode = 'create' | 'join';
 type Connection = 'connecting' | 'synced' | 'degraded' | 'failed';
-
-/** Built-in toolbar controls NugNotes doesn't use: no AI provider is wired into
- *  SuperDoc, and there's no tracked-changes or ruler-unit workflow. */
-const EXCLUDED_TOOLBAR_ITEMS = [
-  'ai',
-  'document-mode',
-  'track-changes-accept-selection',
-  'track-changes-reject-selection',
-  'measurement-unit',
-];
-
-const fontsConfig = superDocFontsConfig();
-const uiConfig = {
-  toolbar: {
-    // Fit the editor column, not the window, so controls that don't fit go
-    // into the overflow menu instead of under neighbouring panels.
-    responsiveTo: 'container' as const,
-    excludeItems: EXCLUDED_TOOLBAR_ITEMS,
-    fontOptions: SUPERDOC_FONT_OPTIONS,
-  },
-};
-const viewOptions = { layout: 'web' as const };
-
-/** The slice of SuperDoc's Document API this editor reads. */
-type MaybePromise<T> = T | Promise<T>;
-type DocApi = {
-  blocks: {
-    list(input: unknown): MaybePromise<{ blocks: { text?: string; textPreview?: string }[] }>;
-  };
-  getMarkdown(input: object): MaybePromise<string>;
-  insert(input: { value: string; type: 'markdown' }): unknown;
-};
 
 /** What the editor hands back after edits settle. */
 export interface NotesSnapshot {
@@ -123,135 +55,168 @@ interface NotesEditorProps {
   docKey: DocKey;
   /** Persist the derived copies; called about a second after edits settle. */
   onSnapshot: (snapshot: NotesSnapshot) => Promise<void> | void;
+  /**
+   * Markdown to start an empty note from — the saved copy of a note written
+   * before the BlockNote editor (v0.4.0), so it carries over on first open.
+   */
+  initialMarkdown?: string;
   className?: string;
 }
 
 /**
- * A note edited in SuperDoc (ported from Folio's SuperDocEditor). Its Y.Doc
- * lives in Convex (convex/ydoc.ts), synced by the "convex" provider adapter
- * inside SuperDoc's collaboration worker (src/superdoc/). This component owns
- * what the worker can't:
- *   - claiming the room (create vs join) before SuperDoc mounts,
- *   - rebuilding the plain-text and markdown copies after edits settle,
- *   - telling the student when edits aren't reaching the server,
- *   - holding navigation until the latest edit has saved (an edit typed just
- *     before the editor unmounts is otherwise lost — see save-status.ts).
- * Key it on docKey: SuperDoc reads its document once at mount.
+ * A note edited in BlockNote. Its Y.Doc lives in Convex (convex/ydoc.ts),
+ * synced on the page by src/editor/convex-provider.ts. This component also:
+ *   - rebuilds the plain-text and markdown copies after edits settle,
+ *   - tells the student when edits aren't reaching the server,
+ *   - holds navigation until the latest edit has saved.
+ * Key it on docKey: the Y.Doc and editor are made once per note.
  */
 const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function NotesEditor(
-  { docKey, onSnapshot, className },
+  { docKey, onSnapshot, initialMarkdown, className },
   ref,
 ) {
   const { getToken } = useAuth();
-  // SuperDoc rebuilds the editor when `document` changes, so the token
-  // resolver it holds must be stable. Clerk's getToken always returns a
-  // current token.
-  const fetchToken = useCallback(
-    async () => (await getToken({ template: 'convex' })) ?? '',
-    [getToken],
-  );
+  const { user } = useUser();
+  const { theme } = useTheme();
   const claimRoom = useMutation(api.ydoc.claimRoom);
+  const [ydoc] = useState(() => new Y.Doc());
+  const [openError, setOpenError] = useState<string | null>(null);
 
-  // ---- room claim (decided once, before SuperDoc mounts) ----
-  const [roomMode, setRoomMode] = useState<RoomMode | null>(null);
-  const [claimError, setClaimError] = useState<string | null>(null);
-  // Identifies this editor's claim across remounts (StrictMode mounts twice
-  // in dev), so re-claiming its own empty room isn't mistaken for another tab.
-  const [claimToken] = useState(() => crypto.randomUUID());
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const claim = async () => {
-      try {
-        const result = await claimRoom({ docKey, claimToken });
-        if (cancelled) return;
-        if (result === 'wait') timer = setTimeout(() => void claim(), CLAIM_RETRY_MS);
-        else setRoomMode(result);
-      } catch (error) {
-        console.error("NugNotes: couldn't open the notes editor", error);
-        if (!cancelled) setClaimError("These notes couldn't be opened.");
-      }
-    };
-    void claim();
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [claimRoom, docKey, claimToken]);
+  // Images dropped, pasted or picked in the editor go to R2 and are shown from
+  // its public domain. The editor is made once, so it reads the uploader
+  // through a ref.
+  const uploadToR2 = useUploadFile(api.r2);
+  const uploadRef = useRef(uploadToR2);
+  uploadRef.current = uploadToR2;
 
-  const document = useMemo(
-    () =>
-      roomMode === null
-        ? null
-        : {
-            type: 'docx' as const,
-            // A room needs a base file. On create it's the NugNotes template
-            // (its styles become the note's); on join the Y.Doc replaces it.
-            url: SUPERDOC_TEMPLATE_URL,
-            collaboration: {
-              providerType: 'extension' as const,
-              adapterId: 'convex',
-              documentId: docKey,
-              roomMode,
-              providerOptions: { convexUrl: import.meta.env.VITE_CONVEX_URL },
-              token: fetchToken,
-            },
-          },
-    [docKey, roomMode, fetchToken],
+  const editor = useCreateBlockNote(
+    withCollaboration({
+      schema: notesSchema,
+      extensions: [macSelectionShortcuts],
+      uploadFile: async (file: File) =>
+        `${import.meta.env.VITE_R2_PUBLIC_URL}/${await uploadRef.current(file)}`,
+      collaboration: {
+        fragment: ydoc.getXmlFragment(FRAGMENT),
+        user: { name: user?.firstName ?? 'Classmate', color: '#d97706' },
+      },
+    }),
+    [ydoc],
   );
 
-  // ---- connection state → save pill + unload guard ----
+  // y-prosemirror destroys its undo manager when the editor view unmounts, but
+  // the editor keeps the dead one — so a remount (StrictMode does one in dev)
+  // leaves undo doing nothing. Re-add the undo plugin when that happens:
+  // removed first, so it starts with fresh state instead of inheriting the
+  // dead manager.
+  useEffect(() => {
+    const undoManager = yUndoPluginKey.getState(editor.prosemirrorState)?.undoManager;
+    if (undoManager && !undoManager.trackedOrigins.has(undoManager)) {
+      editor.unregisterExtension('yUndo');
+      editor.registerExtension(YUndoExtension());
+    }
+  });
+
+  // ---- sync with Convex ----
   const [connection, setConnection] = useState<Connection>('connecting');
   const connectionRef = useRef<Connection>('connecting');
-  const onConnection = (state: Connection) => {
-    console.debug(`NugNotes: notes sync ${connectionRef.current} → ${state}`);
-    connectionRef.current = state;
-    setConnection(state);
-  };
+  const unpushed = useRef(false);
+  const synced = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchToken = useCallback(
+    async () => (await getToken({ template: 'convex' })) ?? null,
+    [getToken],
+  );
+
+  // ---- derived copies (plain text + markdown) ----
+  const onSnapshotRef = useRef(onSnapshot);
+  onSnapshotRef.current = onSnapshot;
+  const extractTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const extract = useCallback(async (): Promise<void> => {
+    // Before the first sync the editor is empty; writing that would wipe the copies.
+    if (!synced.current) return;
+    try {
+      const blocks = editor.document;
+      await onSnapshotRef.current({
+        plainText: blocksToPlainText(blocks),
+        markdown: editor.blocksToMarkdownLossy(blocks),
+      });
+    } catch (error) {
+      // The Y.Doc (the real content) is unaffected; the copies catch up on
+      // the next edit. Logged, not surfaced — nothing the student can do.
+      console.error('NugNotes: notes snapshot failed', error);
+    }
+  }, [editor]);
+
+  const scheduleExtract = useCallback(() => {
+    clearTimeout(extractTimer.current);
+    extractTimer.current = setTimeout(() => void extract(), EXTRACT_DEBOUNCE_MS);
+  }, [extract]);
+
+  const initialMarkdownRef = useRef(initialMarkdown);
+  useEffect(() => {
+    let cancelled = false;
+    let sync: { destroy(): Promise<void> } | null = null;
+    const setState = (state: Connection) => {
+      console.debug(`NugNotes: notes sync ${connectionRef.current} → ${state}`);
+      connectionRef.current = state;
+      setConnection(state);
+    };
+
+    const onFirstSync = async () => {
+      // A note from before BlockNote: start it from its saved markdown copy.
+      const markdown = initialMarkdownRef.current?.trim();
+      if (markdown && ydoc.getXmlFragment(FRAGMENT).length === 0) {
+        const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+        if (cancelled || ydoc.getXmlFragment(FRAGMENT).length > 0) return;
+        editor.replaceBlocks(editor.document, blocks);
+      }
+      synced.current = true;
+    };
+
+    // The server needs the document's room row before it accepts edits.
+    claimRoom({ docKey, claimToken: crypto.randomUUID() })
+      .then(() => {
+        if (cancelled) return;
+        const client = new ConvexClient(import.meta.env.VITE_CONVEX_URL);
+        client.setAuth(fetchToken);
+        sync = attachConvexSync({
+          client,
+          docKey,
+          ydoc,
+          callbacks: {
+            onSynced: () => {
+              if (!synced.current) void onFirstSync();
+              setState('synced');
+            },
+            onDegraded: () => setState('degraded'),
+            onFailed: (detail) => {
+              console.error('NugNotes: notes sync failed', detail);
+              setState('failed');
+            },
+          },
+          onSaveStatus: (status) => {
+            unpushed.current = status.unpushed;
+          },
+        });
+      })
+      .catch((error) => {
+        console.error("NugNotes: couldn't open the notes editor", error);
+        if (!cancelled) setOpenError("These notes couldn't be opened.");
+      });
+
+    return () => {
+      cancelled = true;
+      // destroy() sends any edits still waiting, then closes the connection.
+      void sync?.destroy();
+    };
+  }, [claimRoom, docKey, editor, fetchToken, ydoc]);
+
   const unsynced = connection === 'degraded' || connection === 'failed';
 
-  useEffect(() => {
-    if (!unsynced) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = ''; // some browsers still require this to show the prompt
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [unsynced]);
-
   // ---- save tracking: has the latest edit reached the server? ----
-  // lastEditAt comes from the student's own input on this page (not
-  // onEditorUpdate, which also fires for other people's edits in room notes);
-  // the worker reports what it has pushed over a BroadcastChannel.
-  const lastEditAt = useRef(0);
-  const worker = useRef({ lastLocalUpdateAt: 0, unpushed: false });
-  const [isSaving, setIsSaving] = useState(false);
-  const surfaceRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return;
-    const channel = new BroadcastChannel(SAVE_STATUS_CHANNEL);
-    channel.onmessage = (event: MessageEvent<SaveStatusMessage>) => {
-      if (event.data?.docKey !== docKey) return;
-      worker.current = {
-        lastLocalUpdateAt: event.data.lastLocalUpdateAt,
-        unpushed: event.data.unpushed,
-      };
-    };
-    return () => channel.close();
-  }, [docKey]);
-
-  const isSaved = useCallback(
-    () =>
-      isNoteSaved({
-        now: Date.now(),
-        lastEditAt: lastEditAt.current,
-        workerLastLocalUpdateAt: worker.current.lastLocalUpdateAt,
-        workerUnpushed: worker.current.unpushed,
-      }),
-    [],
-  );
+  const isSaved = useCallback(() => !unpushed.current, []);
 
   const waitUntilSaved = useCallback(async (): Promise<boolean> => {
     if (isSaved()) return true;
@@ -269,33 +234,6 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
     }
   }, [isSaved]);
 
-  // Mark edits from the student's own input inside the editor (toolbar included).
-  useEffect(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    const mark = () => {
-      lastEditAt.current = Date.now();
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isEditingKey(e)) mark();
-    };
-    const onPointerUp = (e: PointerEvent) => {
-      if ((e.target as Element | null)?.closest('.superdoc-toolbar')) mark();
-    };
-    surface.addEventListener('keydown', onKeyDown, true);
-    surface.addEventListener('paste', mark, true);
-    surface.addEventListener('cut', mark, true);
-    surface.addEventListener('drop', mark, true);
-    surface.addEventListener('pointerup', onPointerUp, true);
-    return () => {
-      surface.removeEventListener('keydown', onKeyDown, true);
-      surface.removeEventListener('paste', mark, true);
-      surface.removeEventListener('cut', mark, true);
-      surface.removeEventListener('drop', mark, true);
-      surface.removeEventListener('pointerup', onPointerUp, true);
-    };
-  });
-
   // In-app navigation waits for the latest edit to save, then continues.
   // Closing or reloading the tab can't wait, so it asks instead.
   useBlocker({
@@ -303,56 +241,8 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
       await waitUntilSaved();
       return false;
     },
-    enableBeforeUnload: () => !isSaved(),
+    enableBeforeUnload: () => !isSaved() || unsynced,
   });
-
-  // ---- derived copies (plain text + markdown) ----
-  const docRef = useRef<DocApi | null>(null);
-  const onSnapshotRef = useRef(onSnapshot);
-  onSnapshotRef.current = onSnapshot;
-  const extractTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const extracting = useRef<Promise<void> | null>(null);
-  const extractAgain = useRef(false);
-
-  const extract = useCallback(async (): Promise<void> => {
-    if (extracting.current) {
-      extractAgain.current = true; // an edit landed mid-run; go once more after
-      return extracting.current;
-    }
-    const doc = docRef.current;
-    if (!doc) return;
-    extracting.current = (async () => {
-      do {
-        extractAgain.current = false;
-        try {
-          const [{ blocks }, markdown] = await Promise.all([
-            Promise.resolve(doc.blocks.list({ includeText: true, limit: 20_000 })),
-            Promise.resolve(doc.getMarkdown({})),
-          ]);
-          // getText would run paragraphs together; join blocks instead.
-          const plainText = blocks
-            .map((b) => b.text ?? b.textPreview ?? '')
-            .join('\n\n')
-            .trim();
-          await onSnapshotRef.current({ plainText, markdown: normalizeSuperDocMarkdown(markdown) });
-        } catch (error) {
-          // The Y.Doc (the real content) is unaffected; the copies catch up on
-          // the next edit. Logged, not surfaced — nothing the student can do.
-          console.error('NugNotes: notes snapshot failed', error);
-        }
-      } while (extractAgain.current);
-    })();
-    try {
-      await extracting.current;
-    } finally {
-      extracting.current = null;
-    }
-  }, []);
-
-  const scheduleExtract = useCallback(() => {
-    clearTimeout(extractTimer.current);
-    extractTimer.current = setTimeout(() => void extract(), EXTRACT_DEBOUNCE_MS);
-  }, [extract]);
 
   useImperativeHandle(
     ref,
@@ -363,15 +253,15 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
       },
       waitUntilSaved,
       insertMarkdown: async (markdown: string) => {
-        const doc = docRef.current;
-        if (!doc) throw new Error('The editor is still opening');
-        lastEditAt.current = Date.now();
-        // No target: SuperDoc appends at the end of the document.
-        await doc.insert({ value: markdown, type: 'markdown' });
+        if (!synced.current) throw new Error('The editor is still opening');
+        const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+        const last = editor.document.at(-1);
+        if (last) editor.insertBlocks(blocks, last, 'after');
+        else editor.replaceBlocks(editor.document, blocks);
         scheduleExtract();
       },
     }),
-    [extract, scheduleExtract, waitUntilSaved],
+    [editor, extract, scheduleExtract, waitUntilSaved],
   );
 
   // The update toast and "New session" flush through here before the editor
@@ -397,46 +287,22 @@ const NotesEditor = forwardRef<NotesEditorHandle, NotesEditorProps>(function Not
     [extract],
   );
 
-  const onReady = ({ superdoc }: SuperDocReadyEvent) => {
-    docRef.current = (superdoc.activeEditor?.doc ?? null) as DocApi | null;
-    void extract();
-  };
-
-  if (claimError) {
-    return <p className="p-4 text-sm text-muted-foreground">{claimError}</p>;
-  }
-  if (!document) {
-    return <p className="p-4 text-sm text-muted-foreground">Opening your notes…</p>;
+  if (openError) {
+    return <p className="p-4 text-sm text-muted-foreground">{openError}</p>;
   }
 
   return (
-    <div
-      ref={surfaceRef}
-      className={`nugnotes-superdoc relative flex min-h-0 flex-col ${className ?? ''}`}
-    >
-      <SuperDocEditor
-        document={document}
-        documentMode="editing"
-        contained
-        ui={uiConfig}
-        fonts={fontsConfig}
-        viewOptions={viewOptions}
-        telemetry={{ enabled: false }}
-        workerUrls={{ collaboration: COLLAB_WORKER_URL }}
-        onReady={onReady}
-        onEditorUpdate={scheduleExtract}
-        onCollaborationConnectionChange={({ state }: { state: Connection }) => onConnection(state)}
-        onException={(e) => {
-          // Spell out the error — the raw payload logs as "[object Error]".
-          const { error, ...rest } = e as { error?: unknown } & Record<string, unknown>;
-          console.error(
-            'NugNotes: SuperDoc exception',
-            rest,
-            error instanceof Error ? `${error.name}: ${error.message}` : error,
-          );
-        }}
-        className="min-h-0 flex-1"
-      />
+    <div className={`nugnotes-editor relative flex min-h-0 flex-col ${className ?? ''}`}>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <BlockNoteView
+          editor={editor}
+          theme={DARK_THEMES.has(theme) ? 'dark' : 'light'}
+          formattingToolbar={false}
+          onChange={scheduleExtract}
+        >
+          <NotesFormattingToolbar />
+        </BlockNoteView>
+      </div>
       <div
         className={`pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-[var(--glass-border)] glass-heavy px-3 py-1 text-xs text-foreground shadow-sm transition-opacity duration-200 ${
           unsynced || isSaving ? 'opacity-100' : 'opacity-0'

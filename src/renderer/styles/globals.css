@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./editor-fonts.css";
+/* Let Tailwind see the classes BlockNote's shadcn UI uses. */
+@source "../../../node_modules/@blocknote/shadcn";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -832,100 +835,69 @@
 }
 
 /* ============================================================ */
-/* SuperDoc notes editor (ported from Folio)                    */
+/* Notes editor (BlockNote)                                     */
 /* ============================================================ */
 
-/* SuperDoc themes itself through --sd-* custom properties declared on :root.
-   `html:root` outranks that, and every value reads a NugNotes theme token, so
-   the editor follows the theme switch like the rest of the app. Its menus are
-   attached to <body> (outside .nugnotes-superdoc), which is why these live on
-   the root rather than on the editor wrapper. */
-html:root {
-  --sd-surface-canvas: transparent;
-  --sd-layout-page-bg: var(--card);
-  --sd-surface-page: var(--card);
-  --sd-ui-bg: var(--popover);
-  --sd-ui-toolbar-bg: var(--popover);
-  --sd-ui-surface-bg: var(--popover);
-  --sd-ui-dropdown-bg: var(--popover);
-  --sd-ui-text: var(--foreground);
-  --sd-ui-toolbar-button-text: var(--foreground);
-  --sd-ui-dropdown-text: var(--foreground);
-  --sd-ui-dropdown-hover-text: var(--foreground);
-  --sd-ui-text-muted: color-mix(in srgb, var(--foreground) 55%, transparent);
-  --sd-ui-border: var(--border);
-  --sd-ui-dropdown-border: var(--border);
-  --sd-ui-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --sd-ui-dropdown-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --sd-ui-toolbar-button-hover-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --sd-ui-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
-  --sd-ui-toolbar-button-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
-  --sd-ui-dropdown-active-bg: color-mix(in srgb, var(--foreground) 16%, transparent);
-  --sd-ui-font-family: var(--font-sans);
-}
-.nugnotes-superdoc {
-  color: var(--foreground);
-}
-
-/* SuperDoc paints default-coloured ("auto") text with an inline
-   `color: rgb(0, 0, 0)` that no variable reaches. Map exactly that to the
-   theme's text colour — most NugNotes themes are dark. Text the note colours on
-   purpose (links, red, …) keeps its colour. */
-.nugnotes-superdoc [style*="color: rgb(0, 0, 0)"] {
-  color: var(--foreground) !important;
-}
-/* Highlighted text keeps dark ink in every theme — light ink on a bright
-   highlight would be unreadable. */
-.nugnotes-superdoc [style*="background-color"] {
-  color: #1a1a1a !important;
+/* BlockNote themes itself through --bn-* variables on .bn-container. These
+   read NugNotes theme tokens so the editor follows the theme switch. The
+   `html body` prefix outranks BlockNote's own light/dark defaults, and covers
+   the menus it portals outside the editor. */
+html body .bn-container[data-color-scheme] {
+  --bn-colors-editor-text: var(--card-foreground);
+  --bn-colors-editor-background: var(--card);
+  --bn-colors-menu-text: var(--popover-foreground);
+  --bn-colors-menu-background: var(--popover);
+  --bn-colors-tooltip-text: var(--popover-foreground);
+  --bn-colors-tooltip-background: var(--popover);
+  --bn-colors-hovered-text: var(--foreground);
+  --bn-colors-hovered-background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --bn-colors-selected-text: var(--primary-foreground);
+  --bn-colors-selected-background: var(--primary);
+  --bn-colors-disabled-text: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --bn-colors-disabled-background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  --bn-colors-shadow: color-mix(in srgb, var(--foreground) 18%, transparent);
+  --bn-colors-border: var(--border);
+  --bn-colors-side-menu: color-mix(in srgb, var(--foreground) 35%, transparent);
+  /* The toolbar's text and highlight colours use each theme's editor palette
+     (--font-color-1…8); highlights are a tint of the same colour. */
+  --bn-colors-highlights-gray-text: var(--font-color-1);
+  --bn-colors-highlights-gray-background: color-mix(in srgb, var(--font-color-1) 30%, transparent);
+  --bn-colors-highlights-orange-text: var(--font-color-2);
+  --bn-colors-highlights-orange-background: color-mix(in srgb, var(--font-color-2) 30%, transparent);
+  --bn-colors-highlights-green-text: var(--font-color-3);
+  --bn-colors-highlights-green-background: color-mix(in srgb, var(--font-color-3) 30%, transparent);
+  --bn-colors-highlights-red-text: var(--font-color-4);
+  --bn-colors-highlights-red-background: color-mix(in srgb, var(--font-color-4) 30%, transparent);
+  --bn-colors-highlights-blue-text: var(--font-color-5);
+  --bn-colors-highlights-blue-background: color-mix(in srgb, var(--font-color-5) 30%, transparent);
+  --bn-colors-highlights-purple-text: var(--font-color-6);
+  --bn-colors-highlights-purple-background: color-mix(in srgb, var(--font-color-6) 30%, transparent);
+  --bn-colors-highlights-pink-text: var(--font-color-7);
+  --bn-colors-highlights-pink-background: color-mix(in srgb, var(--font-color-7) 30%, transparent);
+  --bn-colors-highlights-yellow-text: var(--font-color-8);
+  --bn-colors-highlights-yellow-background: color-mix(in srgb, var(--font-color-8) 30%, transparent);
+  --bn-font-family: "Inter", var(--font-sans);
 }
 
-/* Continuous layout: SuperDoc renders a bare flow, so give it a sheet. */
-.nugnotes-superdoc .superdoc--web-layout {
-  background: transparent;
-}
-.nugnotes-superdoc .superdoc-web-flow {
-  box-sizing: border-box;
+/* The note sits on a sheet inside its panel. */
+.nugnotes-editor .bn-container {
   max-width: 48rem;
   min-height: 60vh;
   margin: 1rem auto 4rem;
-  padding: 2rem 2.5rem;
-  background: var(--card);
+  padding: 1.5rem 0;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
+  background: var(--card);
 }
 
 /* Phones: the sheet is the screen. */
 @media (max-width: 767px) {
-  .nugnotes-superdoc .superdoc-web-flow {
-    max-width: none;
+  .nugnotes-editor .bn-container {
     margin: 0;
-    padding: 1.25rem 1rem 5rem;
+    padding-bottom: 5rem;
     border: 0;
     border-radius: 0;
   }
-}
-
-/* SuperDoc sizes toolbar icons with `.superdoc-toolbar svg`, but the overflow
-   (⋮) menu is attached to <body>, outside .superdoc-toolbar — so its icons
-   collapsed to 0×0. Give them the toolbar's size. */
-.sd-toolbar-overflow-menu .sd-toolbar-icon__icon {
-  width: 16px;
-}
-.sd-toolbar-overflow-menu .sd-toolbar-icon__icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-/* Same root cause for colour: the dropdown carets in that menu set no fill of
-   their own and fell back to black. */
-.sd-toolbar-overflow-menu svg {
-  fill: currentColor;
-}
-/* Most toolbar icons are filled with currentColor, but some (line height)
-   are drawn with a hard-coded black stroke, which stayed black on dark themes. */
-.sd-toolbar-icon__icon svg [stroke]:not([stroke="none"]) {
-  stroke: currentColor;
 }
 
 /* ============================================================ */

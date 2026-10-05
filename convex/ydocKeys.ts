@@ -1,5 +1,5 @@
 /**
- * A SuperDoc document's key in the ydoc tables. Notes belong either to a
+ * A note document's key in the ydoc tables. Notes belong either to a
  * session (owner only) or to a study room (its members), so the key carries
  * the kind: `session:<id>` or `room:<id>`. Shared by the client and Convex.
  */

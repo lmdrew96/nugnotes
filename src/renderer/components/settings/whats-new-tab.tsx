@@ -80,7 +80,7 @@ export function WhatsNewTab({ previouslySeenVersion }: WhatsNewTabProps) {
           <p className="text-sm text-muted-foreground">
             Everything that's changed in NugNotes, newest first.
           </p>
-          {/* The notes editor (SuperDoc) is AGPL, which asks that everyone who
+          {/* NugNotes is AGPL-licensed (LICENSE), which asks that everyone who
               uses the app can get its source. */}
           <p className="mt-1 text-xs text-muted-foreground">
             NugNotes is open source —{' '}

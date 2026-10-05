@@ -13,14 +13,14 @@ import {
 import { parseDocKey } from './ydocKeys';
 
 /**
- * SuperDoc persistence (ported from Folio): a note's Y.Doc lives here as an
+ * Note persistence (ported from Folio): a note's Y.Doc lives here as an
  * append-only log of Yjs updates (`ydocUpdates`), written and read by the
- * Convex provider adapter in SuperDoc's collaboration worker
- * (src/superdoc/convex-provider.ts). Documents are keyed by a DocKey
- * (convex/ydocKeys.ts): a session's notes or a study room's shared notes.
+ * notes editor's sync provider (src/editor/convex-provider.ts). Documents are
+ * keyed by a DocKey (convex/ydocKeys.ts): a session's notes or a study room's
+ * shared notes.
  *
  * Sync protocol, per open editor:
- *   1. claimRoom → "create" (you seed it) | "join" | "wait" (retry shortly).
+ *   1. claimRoom, so the document has a room row.
  *   2. Subscribe to `head` — a tiny marker that changes on every write.
  *   3. When it changes, fetch `since(after)` — only the rows you're missing —
  *      and apply them. Yjs updates are idempotent, so overlap is harmless;
@@ -82,10 +82,10 @@ const hasAnyUpdate = async (ctx: QueryCtx | MutationCtx, docKey: string) =>
     .first()) !== null;
 
 /**
- * Decide, atomically, whether the caller creates this document's room or
- * joins it. SuperDoc refuses to "create" a room that exists and can't "join"
- * one with no content, so this can't be a guess from a query result — two tabs
- * opening a brand-new note at once would both guess "create".
+ * Make sure this document has a room row (push needs one) and decide,
+ * atomically, whether the caller creates the room or joins it. The BlockNote
+ * editor (v0.4.0+) only needs the row and ignores the answer; create-vs-join
+ * mattered to SuperDoc, which needed exactly one tab to seed a new room.
  *   - no room row           → claim it, "create"
  *   - room has content      → "join"
  *   - claimed by this same editor (`claimToken`), still empty → "create" again
@@ -215,8 +215,8 @@ export const loadForCompaction = internalQuery({
 
 /**
  * Merge every current row into one snapshot. Uses Y.mergeUpdates, which is
- * lossless — not a GC'd re-encode — because SuperDoc may rely on deleted
- * content (history, tracked changes) that garbage collection would drop.
+ * lossless — not a GC'd re-encode — because an editor may rely on deleted
+ * content (undo history, positions) that garbage collection would drop.
  * Rows pushed while this runs aren't in `replaced`, so they survive untouched.
  */
 export const compact = internalAction({

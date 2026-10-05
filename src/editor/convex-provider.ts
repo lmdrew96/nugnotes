@@ -4,10 +4,10 @@ import * as Y from 'yjs';
 import { api } from '../../convex/_generated/api';
 
 /**
- * Keeps one SuperDoc Y.Doc in sync with Convex (convex/ydoc.ts). Ported from
- * Folio. Runs inside SuperDoc's collaboration worker (collab-worker.ts
- * registers it as the "convex" provider adapter); kept free of worker globals
- * so it can be tested against a fake client.
+ * Keeps one note's Y.Doc in sync with Convex (convex/ydoc.ts). Ported from
+ * Folio. The notes editor (components/notes-editor.tsx) runs it on the page
+ * beside BlockNote; it takes the client as a parameter so it can be tested
+ * against a fake one.
  *
  * Pull: subscribe to the cheap `head` marker; whenever it moves, fetch only
  * the rows since the last one seen and apply them. The fetch re-reads an
@@ -72,7 +72,7 @@ export function attachConvexSync({
   fetchBytes?: (url: string) => Promise<Uint8Array>;
   /**
    * Reports whether local edits are still waiting to reach Convex (NugNotes:
-   * the page holds navigation on it — see src/superdoc/save-status.ts).
+   * the page holds navigation on it — see components/notes-editor.tsx).
    */
   onSaveStatus?: (status: { unpushed: boolean; lastLocalUpdateAt: number }) => void;
 }): SyncHandle {
@@ -148,7 +148,7 @@ export function attachConvexSync({
       }
       markHealthy();
     } catch (err) {
-      console.error('[superdoc-sync] pull failed', err);
+      console.error('[notes-sync] pull failed', err);
       markDegraded();
       later(() => void pull(), RETRY_MS);
     } finally {
@@ -187,7 +187,7 @@ export function attachConvexSync({
             callbacks.onFailed({ stage: 'push', code });
             return;
           }
-          console.error('[superdoc-sync] push failed, will retry', err);
+          console.error('[notes-sync] push failed, will retry', err);
           pending = [merged, ...pending]; // keep order: this batch goes first
           markDegraded();
           if (!destroyed && !closing) later(() => schedulePush(), RETRY_MS);
@@ -230,7 +230,7 @@ export function attachConvexSync({
       void pull();
     },
     (err) => {
-      console.error('[superdoc-sync] head subscription error', err);
+      console.error('[notes-sync] head subscription error', err);
       markDegraded();
     },
   );

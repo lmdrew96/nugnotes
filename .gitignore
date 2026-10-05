@@ -47,5 +47,3 @@ copilot-instructions.md
 # Personal easter egg cheat sheet (kept local)
 docs/EASTER-EGGS.md
 
-# SuperDoc assets, rebuilt by `pnpm superdoc:assets`
-/public/superdoc/

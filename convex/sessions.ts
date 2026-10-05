@@ -53,7 +53,7 @@ export const get = query({
     const session = await ctx.db.get(args.id);
     if (!session || session.userId !== identity.subject) return null;
 
-    // Join the notes' plain-text and markdown copies (the note itself is a SuperDoc doc — convex/ydoc.ts)
+    // Join the notes' plain-text and markdown copies (the note itself is a Y.Doc — convex/ydoc.ts)
     const notesDoc = await ctx.db
       .query('sessionNotes')
       .withIndex('by_session', (q) => q.eq('sessionId', args.id))
@@ -203,7 +203,7 @@ export const restore = mutation({
   },
 });
 
-// Permanently delete a session (cascades to sessionNotes and its SuperDoc data)
+// Permanently delete a session (cascades to sessionNotes and its Y.Doc data)
 export const permanentDelete = mutation({
   args: { id: v.id('sessions') },
   handler: async (ctx, args) => {

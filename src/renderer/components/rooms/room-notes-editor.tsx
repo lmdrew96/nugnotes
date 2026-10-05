@@ -3,7 +3,7 @@ import { Suspense, lazy } from 'react';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import { roomDocKey } from '../../../../convex/ydocKeys';
 
-// SuperDoc is ~20 MB; load it only when the room's notes tab opens.
+// The editor is a big chunk; load it only when the room's notes tab opens.
 const NotesEditor = lazy(() => import('@/components/notes-editor'));
 
 // Room notes live only in the editor (no derived copy is read anywhere else).
@@ -13,7 +13,7 @@ interface RoomNotesEditorProps {
   roomId: Id<'studyRooms'>;
 }
 
-/** The study room's shared notes: one SuperDoc document every member edits live. */
+/** The study room's shared notes: one document every member edits live. */
 export function RoomNotesEditor({ roomId }: RoomNotesEditorProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">

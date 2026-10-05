@@ -8,7 +8,7 @@ import {
   PUSH_DEBOUNCE_MS,
   type SyncClient,
   attachConvexSync,
-} from '../src/superdoc/convex-provider';
+} from '../src/editor/convex-provider';
 
 const DOC = 'session:doc1';
 

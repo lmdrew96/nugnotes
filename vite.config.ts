@@ -145,14 +145,9 @@ export default defineConfig(({ mode }) => {
         workbox: {
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB (allow large preview images)
           globPatterns: ['**/*.{js,css,html,ico,png,PNG,svg,woff2,webp}'],
-          // SuperDoc (~25 MB of engine, workers and fonts) loads only when an
-          // editor opens; precaching it would make every visit download it.
-          globIgnores: [
-            'superdoc/**',
-            'assets/docx-engine.es-*',
-            'assets/superdoc.es-*',
-            'assets/*-worker-entry-*',
-          ],
+          // The notes editor's fonts (~2 MB, assets/editor-fonts/) download
+          // only when a note uses them; precaching would fetch all of them.
+          globIgnores: ['assets/*-{normal,italic}-*.woff2'],
           runtimeCaching: [
             {
               // Convex backend — never cache (real-time data)
@@ -203,12 +198,6 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       strictPort: true,
-    },
-    // SuperDoc's engine starts its document worker from a URL relative to its
-    // own module. Pre-bundling moves that module, so the worker URL 404s in
-    // dev; served as-is from node_modules it resolves.
-    optimizeDeps: {
-      exclude: ['superdoc', '@superdoc-dev/react', '@superdoc/docx-engine'],
     },
     css: {
       postcss: './postcss.config.cjs',

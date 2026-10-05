@@ -37,7 +37,7 @@ export default defineSchema({
     sessionId: v.id('sessions'),
     userId: v.string(),
     plainText: v.optional(v.string()),
-    // Markdown copy of the SuperDoc note, for read-only views.
+    // Markdown copy of the note (the editor writes it), for read-only views.
     markdown: v.optional(v.string()),
     updatedAt: v.number(),
   })
@@ -365,8 +365,8 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index('by_room_user', ['examRoomId', 'userId']),
 
-  // SuperDoc persistence (convex/ydoc.ts). One row per Yjs update pushed by an
-  // editor's collaboration worker, plus compacted snapshots that replace a run
+  // Note persistence (convex/ydoc.ts). One row per Yjs update pushed by a
+  // notes editor, plus compacted snapshots that replace a run
   // of them. Exactly one of `update` (inline bytes) or `storageId` (a snapshot
   // too big to hold inline) is set. Keyed by DocKey (convex/ydocKeys.ts).
   ydocUpdates: defineTable({
@@ -376,7 +376,7 @@ export default defineSchema({
     author: v.string(), // identity.subject, or "compaction" for a snapshot
   }).index('by_doc', ['docKey']),
 
-  // One row per document that has a SuperDoc room. Decides create-vs-join
+  // One row per note document. Decides create-vs-join
   // atomically (ydoc.claimRoom) and tracks when to compact.
   ydocRooms: defineTable({
     docKey: v.string(),

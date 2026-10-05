@@ -1,6 +1,6 @@
 /**
  * The material every AI feature works from: a session's typed notes (the plain
- * text the SuperDoc editor saves) and the text extracted from its uploaded
+ * text the notes editor saves) and the text extracted from its uploaded
  * documents and handwriting. Replaces ScribeCat's lecture transcript.
  *
  * One builder for all of them, so study tools, games and chat read the same

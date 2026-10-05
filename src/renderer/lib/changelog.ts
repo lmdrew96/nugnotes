@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.4.0',
+    date: '2026-10-04',
+    title: 'A new notes editor',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Notes have a new editor. Nested lists behave, clicks land where you click, and Cmd+A, Shift+Cmd+↑/↓ and undo all work the way you expect.',
+      },
+      {
+        kind: 'added',
+        text: 'Pick a font and size for any text from the toolbar that appears when you select it — plus text colours and highlights that match your theme.',
+      },
+      {
+        kind: 'added',
+        text: 'Type “/” on an empty line to add a heading, list, checklist, table or image, and drag the handle beside any line to move it.',
+      },
+    ],
+  },
+  {
     version: '0.3.2',
     date: '2026-10-04',
     title: 'Nugget, locked down',

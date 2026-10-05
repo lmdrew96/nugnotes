@@ -10,7 +10,7 @@ import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { sessionDocKey } from '../../../convex/ydocKeys';
 
-// SuperDoc is ~20 MB; load it only when a note actually opens.
+// The editor is a big chunk; load it only when a note actually opens.
 const NotesEditor = lazy(() => import('@/components/notes-editor'));
 
 interface NotesPanelProps {
@@ -23,7 +23,7 @@ interface NotesPanelProps {
   ensureSession?: () => Promise<Id<'sessions'>>;
 }
 
-/** A session's notes: the SuperDoc editor plus "generate notes from my document". */
+/** A session's notes: the editor plus "generate notes from my document". */
 export function NotesPanel({ sessionId, ensureSession }: NotesPanelProps) {
   const session = useSession(sessionId ?? null);
   const { updateSession } = useSessionMutations();
@@ -120,17 +120,22 @@ export function NotesPanel({ sessionId, ensureSession }: NotesPanelProps) {
         </div>
       )}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl glass">
-        <Suspense
-          fallback={<p className="p-4 text-sm text-muted-foreground">Loading the editor…</p>}
-        >
-          <NotesEditor
-            key={sessionId}
-            ref={editorRef}
-            docKey={sessionDocKey(sessionId)}
-            onSnapshot={saveSnapshot}
-            className="flex-1"
-          />
-        </Suspense>
+        {session === undefined ? (
+          <p className="p-4 text-sm text-muted-foreground">Loading the editor…</p>
+        ) : (
+          <Suspense
+            fallback={<p className="p-4 text-sm text-muted-foreground">Loading the editor…</p>}
+          >
+            <NotesEditor
+              key={sessionId}
+              ref={editorRef}
+              docKey={sessionDocKey(sessionId)}
+              onSnapshot={saveSnapshot}
+              initialMarkdown={session?.notesMarkdown}
+              className="flex-1"
+            />
+          </Suspense>
+        )}
       </div>
     </div>
   );
