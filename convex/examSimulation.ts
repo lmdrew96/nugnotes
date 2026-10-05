@@ -10,6 +10,7 @@ import { action, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { getExamSimulationPrompt } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { enforceLimit } from './rateLimits';
 import { NOT_ENOUGH_MATERIAL, hasEnoughMaterial } from './studyMaterial';
 import { callClaude, extractJson } from './studyTools';
 
@@ -76,6 +77,7 @@ export const generateExamSimulation = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError('Not authenticated');
     const userId = identity.subject;
+    await enforceLimit(ctx, 'aiGenerate', userId);
 
     const [brain, sessions] = await Promise.all([
       ctx.runQuery(internal.examBrain.getExamRoomBrain, {

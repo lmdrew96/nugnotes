@@ -20,6 +20,7 @@ import {
 import { api, internal } from './_generated/api';
 import { requireAuth } from './authHelpers';
 import type { LectureType } from './prompts';
+import { enforceLimit, requireUserId } from './rateLimits';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ import type { LectureType } from './prompts';
  * study tools panel shows as-is.
  */
 async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
+  await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
   const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
   if (!session) throw new Error('Session not found');
   const material = { notes: session.notesPlainText, documentText: session.documentText };

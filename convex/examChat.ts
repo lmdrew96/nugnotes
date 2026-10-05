@@ -4,30 +4,63 @@
  * Haiku handles per-message chat; the brain provides intelligent context routing.
  */
 
-import { v } from 'convex/values';
-import { httpAction } from './_generated/server';
-import { mutation, query } from './_generated/server';
+import { ConvexError, v } from 'convex/values';
+import { api, internal } from './_generated/api';
+import { action, internalQuery, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { callClaude } from './config';
+import { enforceLimit, requireUserId } from './rateLimits';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+// ─── Chat action ─────────────────────────────────────────────
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+/** Most prior turns sent back to the model. */
+const MAX_HISTORY = 40;
 
-// ─── HTTP Action ─────────────────────────────────────────────
+/** The room's exam date, if the caller is a member of the room; null otherwise. */
+export const getChatRoom = internalQuery({
+  args: { examRoomId: v.id('examRooms'), userId: v.string() },
+  handler: async (ctx, { examRoomId, userId }) => {
+    const member = await ctx.db
+      .query('examRoomMembers')
+      .withIndex('by_room_user', (q) => q.eq('examRoomId', examRoomId).eq('userId', userId))
+      .unique();
+    if (!member) return null;
+    const room = await ctx.db.get(examRoomId);
+    return room ? { examDate: room.examDate ?? null } : null;
+  },
+});
 
-export const examNuggetChat = httpAction(async (_ctx, request) => {
-  const { message, conversationHistory, brainContext, sessionTitles, currentDateTime, examDate } =
-    await request.json();
+/**
+ * One exam-room chat turn. Runs as the signed-in student, who must be a member
+ * of the room; the room's knowledge map and exam date are loaded here, never
+ * taken from the browser, and every message counts against their chat limit.
+ */
+export const send = action({
+  args: {
+    examRoomId: v.id('examRooms'),
+    message: v.string(),
+    conversationHistory: v.array(
+      v.object({ role: v.union(v.literal('user'), v.literal('assistant')), content: v.string() }),
+    ),
+    currentDateTime: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ response: string }> => {
+    const userId = await requireUserId(ctx);
+    const room = await ctx.runQuery(internal.examChat.getChatRoom, {
+      examRoomId: args.examRoomId,
+      userId,
+    });
+    if (!room) throw new ConvexError({ code: 'NOT_FOUND', message: 'Exam room not found.' });
+    await enforceLimit(ctx, 'aiChat', userId);
 
-  let systemPrompt = `You are Nugget, a friendly and expert AI study companion in NugNotes' Exam Study Room. You're helping a student prepare for an exam by reviewing multiple lecture sessions at once.
+    // Runs as the caller, and checks room membership itself.
+    const { brainContext, sessionTitles } = await ctx.runQuery(api.examBrain.getBrainContext, {
+      examRoomId: args.examRoomId,
+    });
+    const { currentDateTime } = args;
+    const examDate = room.examDate;
+
+    let systemPrompt = `You are Nugget, a friendly and expert AI study companion in NugNotes' Exam Study Room. You're helping a student prepare for an exam by reviewing multiple lecture sessions at once.
 
 Your personality:
 - Warm, encouraging, and concise
@@ -42,29 +75,29 @@ ${(sessionTitles as string[])?.map((t: string, i: number) => `${i + 1}. ${t}`).j
 
 `;
 
-  if (currentDateTime) {
-    systemPrompt += `## Current Date & Time\n${currentDateTime}\n`;
-    if (examDate) {
-      const examTs = Number(examDate);
-      const endOfExamDay = examTs + 24 * 60 * 60 * 1000 - 1;
-      const now = Date.now();
-      if (now > endOfExamDay) {
-        systemPrompt += 'The exam date has passed.\n';
-      } else if (now >= examTs) {
-        systemPrompt += 'The exam is TODAY!\n';
-      } else {
-        const daysLeft = Math.ceil((examTs - now) / (1000 * 60 * 60 * 24));
-        systemPrompt += `The exam is in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.\n`;
+    if (currentDateTime) {
+      systemPrompt += `## Current Date & Time\n${currentDateTime}\n`;
+      if (examDate) {
+        const examTs = Number(examDate);
+        const endOfExamDay = examTs + 24 * 60 * 60 * 1000 - 1;
+        const now = Date.now();
+        if (now > endOfExamDay) {
+          systemPrompt += 'The exam date has passed.\n';
+        } else if (now >= examTs) {
+          systemPrompt += 'The exam is TODAY!\n';
+        } else {
+          const daysLeft = Math.ceil((examTs - now) / (1000 * 60 * 60 * 24));
+          systemPrompt += `The exam is in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.\n`;
+        }
       }
+      systemPrompt += '\n';
     }
-    systemPrompt += '\n';
-  }
 
-  if (brainContext) {
-    systemPrompt += `## Knowledge Map (Topics & Concepts)\n${brainContext}\n\n`;
-  }
+    if (brainContext) {
+      systemPrompt += `## Knowledge Map (Topics & Concepts)\n${brainContext}\n\n`;
+    }
 
-  systemPrompt += `## Your Role
+    systemPrompt += `## Your Role
 - Answer questions about ANY of the loaded sessions
 - Help the student understand connections between topics across sessions
 - Quiz them informally if they ask
@@ -73,33 +106,16 @@ ${(sessionTitles as string[])?.map((t: string, i: number) => `${i + 1}. ${t}`).j
 
 `;
 
-  const messages: ChatMessage[] = [
-    ...(conversationHistory || []),
-    { role: 'user' as const, content: message },
-  ];
-
-  try {
-    const responseText = await callClaude({
+    const response = await callClaude({
       maxTokens: 1024,
       system: systemPrompt,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: [
+        ...args.conversationHistory.slice(-MAX_HISTORY),
+        { role: 'user' as const, content: args.message },
+      ],
     });
-
-    return new Response(JSON.stringify({ response: responseText, success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-  } catch (error: unknown) {
-    console.error('Error in exam nugget chat:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
-    return new Response(JSON.stringify({ error: errorMessage, success: false }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-  }
+    return { response };
+  },
 });
 
 // ─── Queries ─────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import {
 import { requireAuth } from './authHelpers';
 import { buildExamInput } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { enforceLimit } from './rateLimits';
 import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
 import { postSystemMessage, requireRoomHost, requireRoomMember } from './studyRooms';
 import { getJeopardyPrompt, getQuizPrompt } from './studyToolPrompts';
@@ -209,6 +210,7 @@ export const createGame = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
+    await enforceLimit(ctx, 'aiGenerate', userId);
     await requireRoomHost(ctx, args.roomId, userId);
 
     const room = await ctx.db.get(args.roomId);

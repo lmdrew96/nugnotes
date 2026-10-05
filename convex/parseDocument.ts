@@ -8,6 +8,7 @@ import { ConvexError, v } from 'convex/values';
 import { action } from './_generated/server';
 import { callClaude } from './config';
 import { r2 } from './r2';
+import { enforceLimit, requireUserId } from './rateLimits';
 
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -34,9 +35,16 @@ export const parseDocumentImages = action({
     storageIds: v.array(v.string()),
     mimeTypes: v.array(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
+    // Vision is the priciest call in the app: signed-in users only, rate-limited.
+    await enforceLimit(ctx, 'documentParse', await requireUserId(ctx));
     if (args.storageIds.length === 0) {
       throw new ConvexError('No files provided');
+    }
+
+    // Matches the upload panel's limit — a direct call can't send more.
+    if (args.storageIds.length > 5) {
+      throw new ConvexError('Upload at most 5 files at a time');
     }
 
     if (args.storageIds.length !== args.mimeTypes.length) {

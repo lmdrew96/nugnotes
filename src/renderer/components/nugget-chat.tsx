@@ -4,10 +4,12 @@
  */
 
 import { Button } from '@/components/ui/button';
+import { friendlyError } from '@/lib/errors';
 import { renderMarkdown } from '@/lib/render-markdown';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { Bug, Cat, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -19,26 +21,15 @@ interface ChatMessage {
 }
 
 interface NuggetChatProps {
-  notes?: string;
-  documentText?: string;
+  /** The open session, if any — the server loads its notes and documents. */
   sessionId?: string;
-  convexUrl?: string;
-  lectureType?: string;
-  nuggetNotes?: string;
+  /** Whether that session has uploaded documents (shows the "Include documents" toggle). */
+  hasDocuments?: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function NuggetChat({
-  notes,
-  documentText,
-  sessionId,
-  convexUrl,
-  lectureType,
-  nuggetNotes,
-  isOpen,
-  onOpenChange,
-}: NuggetChatProps) {
+export function NuggetChat({ sessionId, hasDocuments, isOpen, onOpenChange }: NuggetChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,8 +46,8 @@ export function NuggetChat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // User profile (for bug report reporter field)
-  const userProfile = useQuery(api.userProfiles.getMyProfile, {});
+  const sendChat = useAction(api.nuggetChat.send);
+  const submitBug = useAction(api.reportBug.submit);
 
   // Chat history persistence
   const chatHistory = useQuery(
@@ -86,15 +77,6 @@ export function NuggetChat({
       setMessages([]);
     }
   }, [chatHistory, sessionId]);
-
-  // Get the API base URL
-  const getApiUrl = useCallback(() => {
-    const baseUrl = (convexUrl || import.meta.env.VITE_CONVEX_URL || '').replace(
-      '.convex.cloud',
-      '.convex.site',
-    );
-    return `${baseUrl}/nuggetChat`;
-  }, [convexUrl]);
 
   // Auto-scroll to bottom when messages change
   // biome-ignore lint/correctness/useExhaustiveDependencies: Need to scroll when messages array changes
@@ -162,54 +144,37 @@ export function NuggetChat({
       setIsLoading(true);
 
       try {
-        const response = await fetch(getApiUrl(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: userMessage.content,
-            conversationHistory: messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-            notes: includeNotes ? notes : undefined,
-            documentText: includeDocuments ? documentText : undefined,
-            lectureType,
-            nuggetNotes: includeNotes ? nuggetNotes : undefined,
-            currentDateTime: new Date().toLocaleString('en-US', {
-              dateStyle: 'full',
-              timeStyle: 'short',
-            }),
+        const { response } = await sendChat({
+          message: userMessage.content,
+          conversationHistory: messages
+            .filter((m) => !m.id.startsWith('error-'))
+            .map((m) => ({ role: m.role, content: m.content })),
+          sessionId: sessionId as Id<'sessions'> | undefined,
+          includeNotes,
+          includeDocuments,
+          currentDateTime: new Date().toLocaleString('en-US', {
+            dateStyle: 'full',
+            timeStyle: 'short',
           }),
         });
-
-        const responseData = await response.json();
-
-        if (responseData.success && responseData.response) {
-          const assistantMessage: ChatMessage = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: responseData.response,
-            timestamp: Date.now(),
-          };
-          const withResponse = [...updatedMessages, assistantMessage];
-          setMessages(withResponse);
-          await persistMessages(withResponse);
-        } else {
-          const errorMsg: ChatMessage = {
-            id: `error-${Date.now()}`,
-            role: 'assistant',
-            content: 'Sorry, I had trouble responding. Please try again!',
-            timestamp: Date.now(),
-          };
-          const withError = [...updatedMessages, errorMsg];
-          setMessages(withError);
-        }
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: response,
+          timestamp: Date.now(),
+        };
+        const withResponse = [...updatedMessages, assistantMessage];
+        setMessages(withResponse);
+        await persistMessages(withResponse);
       } catch (err) {
         console.error('Chat error:', err);
         const errorMsg: ChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'Meow! Something went wrong. Please check your connection and try again.',
+          content: friendlyError(
+            err,
+            'Meow! Something went wrong. Please check your connection and try again.',
+          ),
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, errorMsg]);
@@ -221,58 +186,40 @@ export function NuggetChat({
       input,
       isLoading,
       messages,
-      notes,
-      documentText,
+      sessionId,
       includeNotes,
       includeDocuments,
-      lectureType,
-      nuggetNotes,
-      getApiUrl,
+      sendChat,
       persistMessages,
     ],
   );
 
-  // Submit bug report to GitHub Issues via Convex HTTP action
+  // File a bug report as a GitHub issue (signed-in, rate-limited Convex action)
   const submitBugReport = useCallback(async () => {
     if (!bugTitle.trim() || !bugDescription.trim() || bugSubmitting) return;
 
     setBugSubmitting(true);
-    const baseUrl = (convexUrl || import.meta.env.VITE_CONVEX_URL || '').replace(
-      '.convex.cloud',
-      '.convex.site',
-    );
-
     try {
-      const response = await fetch(`${baseUrl}/reportBug`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: bugTitle.trim(),
-          description: bugDescription.trim(),
-          userDisplayName: userProfile?.displayName,
-          browserInfo: navigator.userAgent,
-          appVersion: __APP_VERSION__,
-          // Path only: the issue is public, and a query string or hash can carry
-          // redirect or auth parameters that don't belong there.
-          pageUrl: `${window.location.origin}${window.location.pathname}`,
-        }),
+      const { issueUrl, issueNumber } = await submitBug({
+        title: bugTitle.trim(),
+        description: bugDescription.trim(),
+        browserInfo: navigator.userAgent,
+        appVersion: __APP_VERSION__,
+        // Path only: the issue is public, and a query string or hash can carry
+        // redirect or auth parameters that don't belong there.
+        pageUrl: `${window.location.origin}${window.location.pathname}`,
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setBugResult({ url: data.issueUrl, number: data.issueNumber });
-        setBugTitle('');
-        setBugDescription('');
-      } else {
-        setBugResult({ url: '', number: -1 });
-      }
-    } catch {
+      setBugResult({ url: issueUrl, number: issueNumber });
+      setBugTitle('');
+      setBugDescription('');
+    } catch (err) {
+      console.error('Bug report failed:', err);
+      toast.error(friendlyError(err, "Your report couldn't be sent. Please try again."));
       setBugResult({ url: '', number: -1 });
     } finally {
       setBugSubmitting(false);
     }
-  }, [bugTitle, bugDescription, bugSubmitting, convexUrl, userProfile]);
+  }, [bugTitle, bugDescription, bugSubmitting, submitBug]);
 
   // Handle input keydown
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -471,7 +418,7 @@ export function NuggetChat({
                     />
                     <span>Include notes</span>
                   </label>
-                  {documentText && (
+                  {hasDocuments && (
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"

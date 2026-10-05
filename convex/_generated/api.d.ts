@@ -32,6 +32,7 @@ import type * as parseDocument from "../parseDocument.js";
 import type * as productivity from "../productivity.js";
 import type * as prompts from "../prompts.js";
 import type * as r2 from "../r2.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as reportBug from "../reportBug.js";
 import type * as sessionSharing from "../sessionSharing.js";
 import type * as sessions from "../sessions.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   productivity: typeof productivity;
   prompts: typeof prompts;
   r2: typeof r2;
+  rateLimits: typeof rateLimits;
   reportBug: typeof reportBug;
   sessionSharing: typeof sessionSharing;
   sessions: typeof sessions;
@@ -118,4 +120,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
 };

@@ -3,6 +3,7 @@ import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
 import { type LectureType, getNoteGenerationPrompt } from './prompts';
+import { enforceLimit, requireUserId } from './rateLimits';
 
 /** Most document text one generation reads (~10k tokens). */
 const NOTE_SOURCE_CHARS = 40_000;
@@ -14,6 +15,7 @@ const NOTE_SOURCE_CHARS = 40_000;
 export const generateNotes = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, { sessionId }): Promise<{ notes: string }> => {
+    await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
     const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
     if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });
     const documentText = session.documentText?.trim();

@@ -7,19 +7,11 @@
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
-import { httpAction } from './_generated/server';
+import { v } from 'convex/values';
+import { api } from './_generated/api';
+import { action } from './_generated/server';
 import { callClaude } from './config';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { enforceLimit, requireUserId } from './rateLimits';
 
 /** Most document text a chat carries — a stack of PDFs mustn't make every turn huge. */
 export const CHAT_DOCUMENT_CHARS = 60_000;
@@ -109,77 +101,62 @@ Your personality:
   return system;
 }
 
-export const nuggetChat = httpAction(async (_ctx, request) => {
-  const {
-    message,
-    conversationHistory,
-    documentText,
-    notes,
-    lectureType,
-    nuggetNotes,
-    currentDateTime,
-  } = await request.json();
+/** Most prior turns sent back to the model. */
+const MAX_HISTORY = 40;
 
-  const system = buildChatSystemPrompt({
-    documentText,
-    notes,
-    nuggetNotes,
-    lectureType,
-    currentDateTime,
-  });
+/**
+ * One chat turn. Runs as the signed-in student: the session's notes, documents
+ * and key points are loaded here by id (the caller must own the session), never
+ * taken from the browser, and every message counts against their chat limit.
+ */
+export const send = action({
+  args: {
+    message: v.string(),
+    conversationHistory: v.array(
+      v.object({ role: v.union(v.literal('user'), v.literal('assistant')), content: v.string() }),
+    ),
+    sessionId: v.optional(v.id('sessions')),
+    includeNotes: v.boolean(),
+    includeDocuments: v.boolean(),
+    currentDateTime: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ response: string }> => {
+    const userId = await requireUserId(ctx);
+    await enforceLimit(ctx, 'aiChat', userId);
 
-  const cachedChars = system[0].cache_control ? system[0].text.length : 0;
+    // null when there's no session open or it isn't theirs — chat still works,
+    // just without session material.
+    const session = args.sessionId
+      ? await ctx.runQuery(api.sessions.get, { id: args.sessionId })
+      : null;
+    const keyPoints = session?.nuggetNotes?.map((n) => `- ${n.text}`).join('\n');
 
-  // Build messages array
-  const messages: ChatMessage[] = [
-    ...(conversationHistory || []),
-    { role: 'user' as const, content: message },
-  ];
+    const system = buildChatSystemPrompt({
+      documentText: args.includeDocuments ? session?.documentText : undefined,
+      notes: args.includeNotes ? session?.notesPlainText : undefined,
+      nuggetNotes: args.includeNotes ? keyPoints || undefined : undefined,
+      lectureType: session?.lectureType,
+      currentDateTime: args.currentDateTime,
+    });
+    const cachedChars = system[0].cache_control ? system[0].text.length : 0;
 
-  try {
-    const responseText = await callClaude({
+    const response = await callClaude({
       maxTokens: 1024,
       system,
       onUsage: (usage) => {
         // The only reliable signal that the cache is working. If
         // cache_read_input_tokens stays 0 across turns of one conversation,
-        // something in the prefix is still varying.
-        //
-        // cachedChars answers what cache_write=0 leaves open: was the prefix
-        // varying, or simply too small? Haiku creates no entry at all below
-        // 4096 tokens (~16k chars), and reports that identically to a miss.
+        // something in the prefix is still varying. cachedChars tells a miss
+        // from a prefix too small to cache (Haiku: under ~16k chars).
         console.log(
           `[nuggetChat] tokens in=${usage.input_tokens} cached_chars=${cachedChars} cache_write=${usage.cache_creation_input_tokens ?? 0} cache_read=${usage.cache_read_input_tokens ?? 0}`,
         );
       },
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: [
+        ...args.conversationHistory.slice(-MAX_HISTORY),
+        { role: 'user' as const, content: args.message },
+      ],
     });
-
-    return new Response(
-      JSON.stringify({
-        response: responseText,
-        success: true,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    );
-  } catch (error: unknown) {
-    console.error('Error in nugget chat:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
-    return new Response(
-      JSON.stringify({
-        error: errorMessage,
-        success: false,
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      },
-    );
-  }
+    return { response };
+  },
 });

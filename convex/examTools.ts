@@ -17,6 +17,7 @@ import {
   getExamSummaryPrompt,
 } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { enforceLimit } from './rateLimits';
 import { NOT_ENOUGH_MATERIAL, hasEnoughMaterial } from './studyMaterial';
 import { callClaude, extractJson } from './studyTools';
 
@@ -139,6 +140,7 @@ export const generateExamTool = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError('Not authenticated');
     const userId = identity.subject;
+    await enforceLimit(ctx, 'aiGenerate', userId);
 
     // Get brain context + all session content
     const [brain, sessions] = await Promise.all([

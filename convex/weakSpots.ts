@@ -10,6 +10,7 @@ import { action, internalQuery, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { getTargetedReviewPrompt } from './examToolPrompts';
 import type { LectureType } from './prompts';
+import { enforceLimit } from './rateLimits';
 import { callClaude, extractJson } from './studyTools';
 
 // ─── Pure Helpers ────────────────────────────────────────────
@@ -141,6 +142,7 @@ export const generateTargetedReview = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError('Not authenticated');
     const userId = identity.subject;
+    await enforceLimit(ctx, 'aiGenerate', userId);
 
     // Get weak spots
     const weakSpotsDoc = await ctx.runQuery(internal.weakSpots.getWeakSpotsInternal, {

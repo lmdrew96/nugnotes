@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { friendlyError } from '@/lib/errors';
 import { renderMarkdown } from '@/lib/render-markdown';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { Cat, Loader2, Send } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../../../convex/_generated/api';
@@ -9,7 +10,6 @@ import type { Id } from '../../../../convex/_generated/dataModel';
 
 interface ExamChatProps {
   examRoomId: Id<'examRooms'>;
-  examDate?: number;
 }
 
 interface ChatMessage {
@@ -18,12 +18,13 @@ interface ChatMessage {
   timestamp: number;
 }
 
-export function ExamChat({ examRoomId, examDate }: ExamChatProps) {
+export function ExamChat({ examRoomId }: ExamChatProps) {
   const chatHistory = useQuery(api.examChat.getExamChatHistory, { examRoomId });
   const saveChatHistory = useMutation(api.examChat.saveExamChatHistory);
 
   // Get brain context (topic indexes) for the chat
   const brainData = useQuery(api.examBrain.getBrainContext, { examRoomId });
+  const sendChat = useAction(api.examChat.send);
   const reindexEmptySessions = useMutation(api.examBrain.reindexEmptySessions);
   const hasTriggeredReindexRef = useRef(false);
 
@@ -77,63 +78,46 @@ export function ExamChat({ examRoomId, examDate }: ExamChatProps) {
     setIsLoading(true);
 
     try {
-      // Call the exam chat HTTP action
-      const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
-      const baseUrl = convexUrl.replace('.cloud', '.site');
-
-      const response = await fetch(`${baseUrl}/examNuggetChat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage.content,
-          conversationHistory: messages.slice(-20).map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-          brainContext: brainData?.brainContext ?? '',
-          sessionTitles: brainData?.sessionTitles ?? [],
-          currentDateTime: new Date().toLocaleString('en-US', {
-            dateStyle: 'full',
-            timeStyle: 'short',
-          }),
-          examDate,
+      const { response } = await sendChat({
+        examRoomId,
+        message: userMessage.content,
+        conversationHistory: messages.slice(-20).map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        currentDateTime: new Date().toLocaleString('en-US', {
+          dateStyle: 'full',
+          timeStyle: 'short',
         }),
       });
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: response,
+        timestamp: Date.now(),
+      };
+      const allMessages = [...updatedMessages, assistantMessage];
+      setMessages(allMessages);
 
-      const data = await response.json();
-
-      if (data.success) {
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: data.response,
-          timestamp: Date.now(),
-        };
-        const allMessages = [...updatedMessages, assistantMessage];
-        setMessages(allMessages);
-
-        // Persist chat history
-        await saveChatHistory({
-          examRoomId,
-          messages: allMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp,
-          })),
-        });
-      } else {
-        throw new Error(data.error ?? 'Failed to get response');
-      }
+      // Persist chat history
+      await saveChatHistory({
+        examRoomId,
+        messages: allMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+        })),
+      });
     } catch (error) {
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: `Sorry, I had trouble responding. ${error instanceof Error ? error.message : 'Please try again.'}`,
+        content: friendlyError(error, 'Sorry, I had trouble responding. Please try again.'),
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, examRoomId, brainData, saveChatHistory, examDate]);
+  }, [input, isLoading, messages, examRoomId, sendChat, saveChatHistory]);
 
   return (
     <div className="flex h-full flex-col">

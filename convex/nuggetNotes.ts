@@ -9,11 +9,13 @@ import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
 import { type LectureType, getKeyPointsPrompt, parseKeyPoints } from './prompts';
+import { enforceLimit, requireUserId } from './rateLimits';
 import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
 
 export const generateKeyPoints = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, { sessionId }): Promise<{ count: number }> => {
+    await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
     // Runs as the caller: a session that isn't theirs comes back null.
     const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
     if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });

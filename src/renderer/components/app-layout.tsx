@@ -16,10 +16,6 @@ export function AppLayout() {
 
   const session = useSession(activeSessionId);
 
-  const keyPoints = session?.nuggetNotes ?? [];
-  const nuggetNotesText =
-    keyPoints.length > 0 ? keyPoints.map((n) => `- ${n.text}`).join('\n') : undefined;
-
   return (
     <div className="app-bg-orbs flex h-screen flex-col">
       <TopBar />
@@ -27,11 +23,8 @@ export function AppLayout() {
         <Outlet />
       </main>
       <NuggetChat
-        notes={session?.notesPlainText}
-        documentText={session?.documentText}
         sessionId={activeSessionId ?? undefined}
-        lectureType={session?.lectureType}
-        nuggetNotes={nuggetNotesText}
+        hasDocuments={!!session?.documentText}
         isOpen={chatOpen}
         onOpenChange={setChatOpen}
       />

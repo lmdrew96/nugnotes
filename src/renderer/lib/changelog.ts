@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.3.2',
+    date: '2026-10-04',
+    title: 'Nugget, locked down',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Nugget chat, exam chat, bug reports and document reading now only work for signed-in students, and only ever see your own sessions and rooms.',
+      },
+      {
+        kind: 'improved',
+        text: 'If you send a lot of AI requests in a row, Nugget asks you to wait a few seconds instead of failing silently.',
+      },
+    ],
+  },
+  {
     version: '0.3.1',
     date: '2026-10-04',
     title: 'No more lost last words',

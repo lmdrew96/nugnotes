@@ -1,62 +1,13 @@
 import { httpRouter } from 'convex/server';
-import { httpAction } from './_generated/server';
-import { examNuggetChat } from './examChat';
 import { mcpGetCourses, mcpGetSession, mcpListSessions, mcpSearchSessions } from './mcpApi';
-import { nuggetChat } from './nuggetChat';
-import { reportBug } from './reportBug';
 
+/**
+ * Public HTTP routes. Only the MCP API lives here, and it authenticates every
+ * request with a per-user API key. Everything that spends AI credits (chat,
+ * generation, document parsing) or posts publicly (bug reports) is a Convex
+ * action instead, so it runs as the signed-in user and is rate-limited.
+ */
 const http = httpRouter();
-
-// CORS preflight handler
-const corsHandler = httpAction(async () => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-});
-
-// Nugget Chat (Q&A about content)
-http.route({
-  path: '/nuggetChat',
-  method: 'OPTIONS',
-  handler: corsHandler,
-});
-
-http.route({
-  path: '/nuggetChat',
-  method: 'POST',
-  handler: nuggetChat,
-});
-
-// Bug Report (creates GitHub Issue)
-http.route({
-  path: '/reportBug',
-  method: 'OPTIONS',
-  handler: corsHandler,
-});
-
-http.route({
-  path: '/reportBug',
-  method: 'POST',
-  handler: reportBug,
-});
-
-// Exam Nugget Chat (multi-session AI chat in exam rooms)
-http.route({
-  path: '/examNuggetChat',
-  method: 'OPTIONS',
-  handler: corsHandler,
-});
-
-http.route({
-  path: '/examNuggetChat',
-  method: 'POST',
-  handler: examNuggetChat,
-});
 
 // MCP API routes (API-key authenticated — no CORS needed, server-to-server)
 http.route({ path: '/mcp/sessions', method: 'GET', handler: mcpListSessions });

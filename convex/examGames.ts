@@ -8,6 +8,7 @@ import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { postExamSystemMessage, requireExamRoomHost, requireExamRoomMember } from './examRooms';
+import { enforceLimit } from './rateLimits';
 import { NOT_ENOUGH_MATERIAL, hasEnoughMaterial } from './studyMaterial';
 
 // ─── Queries ────────────────────────────────────────────────
@@ -136,6 +137,7 @@ export const createExamGame = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx);
+    await enforceLimit(ctx, 'aiGenerate', userId);
     await requireExamRoomHost(ctx, args.examRoomId, userId);
 
     const room = await ctx.db.get(args.examRoomId);
