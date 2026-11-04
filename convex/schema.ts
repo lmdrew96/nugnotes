@@ -54,6 +54,16 @@ export default defineSchema({
     // 0-based position within the session; kept contiguous by convex/pages.ts.
     order: v.number(),
     createdAt: v.number(),
+    // Claude's faithful transcript (convex/transcribe.ts). Absent = never read
+    // (pages from before transcription existed).
+    transcriptStatus: v.optional(
+      v.union(v.literal('pending'), v.literal('done'), v.literal('failed')),
+    ),
+    // One entry per written line. `original` is Claude's text, kept only when
+    // the student fixed the line by hand (so the fix can be shown and undone).
+    transcript: v.optional(
+      v.array(v.object({ text: v.string(), original: v.optional(v.string()) })),
+    ),
   }).index('by_session_order', ['sessionId', 'order']),
 
   // Session notes (separated from sessions to avoid 1MB document limit)

@@ -19,7 +19,11 @@ export const generateKeyPoints = action({
     // Runs as the caller: a session that isn't theirs comes back null.
     const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
     if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });
-    const material = { notes: session.notesPlainText, documentText: session.documentText };
+    const material = {
+      pages: session.pagesText,
+      notes: session.notesPlainText,
+      documentText: session.documentText,
+    };
     requireEnoughMaterial(material);
 
     const reply = await callClaude({

@@ -10,6 +10,7 @@ import {
 import { requireAuth } from './authHelpers';
 import { formatDateKey, isDateKey } from './dateKey';
 import { deleteAllPages } from './pages';
+import { pagesToText } from './transcriptText';
 import { deleteRoomData } from './ydoc';
 import { sessionDocKey } from './ydocKeys';
 
@@ -101,10 +102,16 @@ export const get = query({
       .unique();
 
     const course = session.courseId ? await ctx.db.get(session.courseId) : null;
+    const pages = await ctx.db
+      .query('pages')
+      .withIndex('by_session_order', (q) => q.eq('sessionId', args.id))
+      .collect();
 
     return {
       ...session,
       courseName: course?.name ?? session.course,
+      // The pages' transcripts, for the AI tools (empty until pages are read).
+      pagesText: pagesToText(pages),
       notesPlainText: notesDoc?.plainText,
       notesMarkdown: notesDoc?.markdown,
     };

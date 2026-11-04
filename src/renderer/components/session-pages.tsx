@@ -1,3 +1,4 @@
+import { PageTranscript } from '@/components/page-transcript';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { usePageQueue, usePhotoUpload } from '@/hooks/use-page-photos';
@@ -10,12 +11,14 @@ import {
   Images,
   Loader2,
   RefreshCw,
+  ScanText,
   Trash2,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
+import type { PageWithUrl } from '../../../convex/pages';
 
 interface SessionPagesProps {
   sessionId: Id<'sessions'>;
@@ -24,6 +27,7 @@ interface SessionPagesProps {
 /** A session's photographed pages, in order. Tap a page to enlarge, move, retake or delete it. */
 export function SessionPages({ sessionId }: SessionPagesProps) {
   const pages = useQuery(api.pages.list, { sessionId });
+  const readPages = useMutation(api.pages.readPages);
   const ensureSession = useCallback(() => Promise.resolve(sessionId), [sessionId]);
   const queue = usePageQueue(ensureSession);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -37,6 +41,11 @@ export function SessionPages({ sessionId }: SessionPagesProps) {
   };
 
   const failed = queue.shots.filter((shot) => shot.status === 'failed');
+  // Pages from before transcription existed, or that failed to read.
+  const unread =
+    pages?.filter((p) => p.transcriptStatus === undefined || p.transcriptStatus === 'failed')
+      .length ?? 0;
+  const reading = pages?.filter((p) => p.transcriptStatus === 'pending').length ?? 0;
   const openPage = openIndex !== null ? pages?.[openIndex] : undefined;
 
   return (
@@ -90,6 +99,28 @@ export function SessionPages({ sessionId }: SessionPagesProps) {
             {failed.length} didn’t save. Retry
           </Button>
         )}
+        {reading > 0 && (
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Reading {reading} page{reading > 1 ? 's' : ''}…
+          </span>
+        )}
+        {unread > 0 && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-1.5"
+            onClick={() =>
+              void readPages({ sessionId }).catch((error: unknown) => {
+                console.error('Reading pages failed:', error);
+                toast.error('Couldn’t start reading the pages. Try again.');
+              })
+            }
+          >
+            <ScanText className="h-4 w-4" />
+            Read {unread} page{unread > 1 ? 's' : ''}
+          </Button>
+        )}
       </div>
 
       {pages === undefined ? (
@@ -114,13 +145,26 @@ export function SessionPages({ sessionId }: SessionPagesProps) {
               <span className="absolute left-1 top-1 rounded bg-background/80 px-1.5 text-xs font-medium">
                 {index + 1}
               </span>
+              {page.transcriptStatus === 'pending' && (
+                <span className="absolute right-1 top-1 rounded-full bg-background/80 p-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="Being read" />
+                </span>
+              )}
+              {page.transcriptStatus === 'failed' && (
+                <span className="absolute right-1 top-1 rounded-full bg-background/80 p-1">
+                  <AlertCircle
+                    className="h-3.5 w-3.5 text-destructive"
+                    aria-label="Couldn’t be read"
+                  />
+                </span>
+              )}
             </button>
           ))}
         </div>
       )}
 
       <Dialog open={!!openPage} onOpenChange={(open) => !open && setOpenIndex(null)}>
-        <DialogContent className="flex max-h-[95vh] max-w-3xl flex-col gap-3 p-3">
+        <DialogContent className="flex max-h-[95vh] max-w-5xl flex-col gap-3 p-3">
           {openPage && openIndex !== null && pages && (
             <PageViewer
               key={openPage._id}
@@ -144,7 +188,7 @@ function PageViewer({
   onMoved,
   onDeleted,
 }: {
-  page: { _id: Id<'pages'>; url: string };
+  page: PageWithUrl;
   number: number;
   total: number;
   onMoved: (direction: -1 | 1) => void;
@@ -202,8 +246,18 @@ function PageViewer({
       <DialogTitle className="text-sm">
         Page {number} of {total}
       </DialogTitle>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <img src={page.url} alt={`Page ${number}`} className="mx-auto max-h-[75vh] w-auto" />
+      {/* Photo and transcript side by side (stacked on phones): paper is the original. */}
+      <div className="grid min-h-0 flex-1 gap-3 overflow-auto md:grid-cols-2 md:overflow-hidden">
+        <div className="md:min-h-0 md:overflow-auto">
+          <img src={page.url} alt={`Page ${number}`} className="mx-auto max-h-[75vh] w-auto" />
+        </div>
+        <div className="rounded-lg glass p-3 md:min-h-0 md:overflow-auto">
+          <PageTranscript
+            pageId={page._id}
+            status={page.transcriptStatus}
+            lines={page.transcript}
+          />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button

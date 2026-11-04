@@ -3,6 +3,8 @@ import type { Doc, Id } from './_generated/dataModel';
 import { type MutationCtx, type QueryCtx, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { r2 } from './r2';
+import { queueTranscription } from './transcribe';
+import type { TranscriptLine } from './transcriptText';
 
 /** Signed photo links last a week; a page left open that long just needs a reload. */
 const PHOTO_URL_SECONDS = 7 * 24 * 60 * 60;
@@ -11,6 +13,8 @@ export interface PageWithUrl {
   _id: Id<'pages'>;
   order: number;
   url: string;
+  transcriptStatus?: 'pending' | 'done' | 'failed';
+  transcript?: TranscriptLine[];
 }
 
 const pagesOf = (ctx: QueryCtx, sessionId: Id<'sessions'>): Promise<Doc<'pages'>[]> =>
@@ -63,6 +67,8 @@ export const list = query({
         _id: page._id,
         order: page.order,
         url: await r2.getUrl(page.storageKey, { expiresIn: PHOTO_URL_SECONDS }),
+        transcriptStatus: page.transcriptStatus,
+        transcript: page.transcript,
       })),
     );
   },
@@ -83,6 +89,7 @@ export const add = mutation({
       createdAt: now,
     });
     await ctx.db.patch(sessionId, { updatedAt: now });
+    await queueTranscription(ctx, id);
     return id;
   },
 });
@@ -109,6 +116,50 @@ export const replace = mutation({
     await ctx.db.patch(pageId, { storageKey });
     await ctx.db.patch(page.sessionId, { updatedAt: Date.now() });
     if (oldKey !== storageKey) await r2.deleteObject(ctx, oldKey);
+    await queueTranscription(ctx, pageId); // new photo, new transcript
+  },
+});
+
+/** Read every page of a session that hasn't been read yet or failed. */
+export const readPages = mutation({
+  args: { sessionId: v.id('sessions') },
+  handler: async (ctx, { sessionId }): Promise<number> => {
+    await requireOwnSession(ctx, sessionId);
+    const unread = (await pagesOf(ctx, sessionId)).filter(
+      (page) => page.transcriptStatus === undefined || page.transcriptStatus === 'failed',
+    );
+    for (const page of unread) await queueTranscription(ctx, page._id);
+    return unread.length;
+  },
+});
+
+/** Read one page again (only an unread or failed one, so hand fixes are never lost). */
+export const readPage = mutation({
+  args: { pageId: v.id('pages') },
+  handler: async (ctx, { pageId }): Promise<void> => {
+    const { page } = await requireOwnPage(ctx, pageId);
+    if (page.transcriptStatus === 'pending' || page.transcriptStatus === 'done') return;
+    await queueTranscription(ctx, pageId);
+  },
+});
+
+/**
+ * Fix one transcript line by hand: the only editing in the app. Claude's
+ * version is kept beside it; fixing a line back to that clears the fix.
+ */
+export const fixLine = mutation({
+  args: { pageId: v.id('pages'), index: v.number(), text: v.string() },
+  handler: async (ctx, { pageId, index, text }): Promise<void> => {
+    const { page } = await requireOwnPage(ctx, pageId);
+    const lines = page.transcript;
+    const line = lines?.[index];
+    if (!lines || !line) throw new Error('Line not found');
+    const fixed = text.replace(/\s+$/, '');
+    if (!fixed.trim()) throw new Error('A line can’t be empty');
+    const original = line.original ?? line.text;
+    const next = [...lines];
+    next[index] = fixed === original ? { text: original } : { text: fixed, original };
+    await ctx.db.patch(pageId, { transcript: next });
   },
 });
 

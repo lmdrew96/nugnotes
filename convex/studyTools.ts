@@ -25,8 +25,8 @@ import { enforceLimit, requireUserId } from './rateLimits';
 // ─── Helpers ─────────────────────────────────────────────────
 
 /**
- * Loads a session and the material a study tool works from: its typed notes
- * and uploaded documents. The read runs as the caller, so a session that isn't
+ * Loads a session and the material a study tool works from: its page
+ * transcripts, typed notes and uploaded documents. The read runs as the caller, so a session that isn't
  * theirs comes back as not found. Too little material is a friendly error the
  * study tools panel shows as-is.
  */
@@ -34,7 +34,11 @@ async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
   await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
   const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
   if (!session) throw new Error('Session not found');
-  const material = { notes: session.notesPlainText, documentText: session.documentText };
+  const material = {
+    pages: session.pagesText,
+    notes: session.notesPlainText,
+    documentText: session.documentText,
+  };
   requireEnoughMaterial(material);
   return { session, lecture: buildMaterial(material) };
 }

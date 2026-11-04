@@ -1,7 +1,7 @@
 /**
- * The material every AI feature works from: a session's typed notes (the plain
- * text the notes editor saves) and the text extracted from its uploaded
- * documents and handwriting. Replaces ScribeCat's lecture transcript.
+ * The material every AI feature works from: the faithful transcripts of a
+ * session's photographed pages, older typed notes, and text extracted from
+ * uploaded documents. Replaces ScribeCat's lecture transcript.
  *
  * One builder for all of them, so study tools, games and chat read the same
  * thing — and so the output is byte-identical for a session, which is what lets
@@ -10,6 +10,8 @@
 import { ConvexError } from 'convex/values';
 
 export interface StudyMaterial {
+  /** Transcripts of the session's photographed pages (transcriptText.pagesToText). */
+  pages?: string | null;
   notes?: string | null;
   documentText?: string | null;
 }
@@ -26,13 +28,17 @@ export const MATERIAL_CHARS = 24_000;
 export const NOT_ENOUGH_MATERIAL = {
   code: 'NOT_ENOUGH_MATERIAL',
   message:
-    "There isn't enough here to work from yet — write some notes or upload a document first.",
+    'Nugget doesn’t have enough to read here yet. Add pages, or give new pages a minute to be read.',
 } as const;
 
 const clean = (s: string | null | undefined) => (s ?? '').trim();
 
 export function materialLength(material: StudyMaterial): number {
-  return clean(material.notes).length + clean(material.documentText).length;
+  return (
+    clean(material.pages).length +
+    clean(material.notes).length +
+    clean(material.documentText).length
+  );
 }
 
 export function hasEnoughMaterial(material: StudyMaterial): boolean {
@@ -48,12 +54,23 @@ const clip = (text: string, max: number) =>
   text.length <= max ? text : `${text.slice(0, max)}\n…`;
 
 /**
- * The material as one labelled block: the student's notes first (their own
- * words, usually the more focused), then the documents. When both are present
- * and too long, notes get up to half the budget and documents take the rest.
+ * The material as one labelled block: the student's own words first (page
+ * transcripts, then any older typed notes), then the documents. When there are
+ * documents too and it's too long, the student's words get up to half the
+ * budget and documents take the rest.
  */
 export function buildMaterial(material: StudyMaterial, maxChars = MATERIAL_CHARS): string {
-  const notes = clean(material.notes);
+  const pages = clean(material.pages);
+  const typed = clean(material.notes);
+  // Without pages this is exactly the older typed-notes-only material.
+  const notes = pages
+    ? [
+        `Handwritten pages (faithful transcript. [?] marks a word that couldn't be read. ~~text~~ is something the student crossed out: it is not part of their notes, so never use it as content):\n${pages}`,
+        typed && `Typed notes:\n${typed}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    : typed;
   const docs = clean(material.documentText);
   const notesBudget = docs ? Math.max(maxChars / 2, maxChars - docs.length) : maxChars;
   const notesPart = notes ? clip(notes, notesBudget) : '';

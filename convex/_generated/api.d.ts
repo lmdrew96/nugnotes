@@ -44,6 +44,8 @@ import type * as studyMaterial from "../studyMaterial.js";
 import type * as studyRooms from "../studyRooms.js";
 import type * as studyToolPrompts from "../studyToolPrompts.js";
 import type * as studyTools from "../studyTools.js";
+import type * as transcribe from "../transcribe.js";
+import type * as transcriptText from "../transcriptText.js";
 import type * as userProfiles from "../userProfiles.js";
 import type * as weakSpots from "../weakSpots.js";
 import type * as ydoc from "../ydoc.js";
@@ -93,6 +95,8 @@ declare const fullApi: ApiFromModules<{
   studyRooms: typeof studyRooms;
   studyToolPrompts: typeof studyToolPrompts;
   studyTools: typeof studyTools;
+  transcribe: typeof transcribe;
+  transcriptText: typeof transcriptText;
   userProfiles: typeof userProfiles;
   weakSpots: typeof weakSpots;
   ydoc: typeof ydoc;

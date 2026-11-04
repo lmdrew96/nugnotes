@@ -17,6 +17,8 @@ import { enforceLimit, requireUserId } from './rateLimits';
 export const CHAT_DOCUMENT_CHARS = 60_000;
 
 export interface ChatPromptInput {
+  /** Transcripts of the session's photographed pages. */
+  pages?: string;
   documentText?: string;
   notes?: string;
   nuggetNotes?: string;
@@ -33,6 +35,7 @@ export interface ChatPromptInput {
  * a 0% hit rate that costs more than not caching at all.
  */
 export function buildChatSystemPrompt({
+  pages,
   documentText,
   notes,
   nuggetNotes,
@@ -45,8 +48,8 @@ export function buildChatSystemPrompt({
   // rarely change during a conversation and are usually the bulk of the prompt,
   // so re-sending them at full price every turn is the cost worth avoiding.
   //
-  // UNCACHED: the student's notes, Nugget's key points, and the current time.
-  // Notes change as the student types and the clock every minute, and caching
+  // UNCACHED: the student's pages and notes, Nugget's key points, and the time.
+  // Page transcripts change when the student fixes a line, and caching
   // is a prefix match — anything volatile placed before the documents would
   // invalidate them on every message.
   let systemPrompt = `You are Nugget, a friendly and helpful AI study companion in NugNotes, a note-taking app for students. You help students understand their study material, answer questions, and provide study assistance.
@@ -72,6 +75,11 @@ Your personality:
   // ── everything below here is volatile and must stay after the breakpoint ──
   let volatilePrompt = '';
 
+  const pageText = pages?.trim().slice(0, CHAT_DOCUMENT_CHARS);
+  if (pageText) {
+    volatilePrompt += `## Student's Handwritten Pages\nA faithful transcript of the pages they photographed, page by page. [?] marks a word that couldn't be read; don't guess what it was. ~~text~~ is something they crossed out: it is not part of their notes.\n\n${pageText}\n\n`;
+  }
+
   if (notes) {
     volatilePrompt += `## Student's Notes\nThe student has taken these notes:\n\n${notes}\n\n`;
   }
@@ -84,8 +92,8 @@ Your personality:
     volatilePrompt += `## Current Date & Time\n${currentDateTime}\n\n`;
   }
 
-  if (!documents && !notes && !nuggetNotes) {
-    volatilePrompt += `\nNote: The student hasn't included any notes or documents in this conversation. You can still help with general study questions, but encourage them to open a session, write some notes or upload a document for more specific help.\n`;
+  if (!pageText && !documents && !notes && !nuggetNotes) {
+    volatilePrompt += `\nNote: The student hasn't included any notes or documents in this conversation. You can still help with general study questions, but encourage them to open a session and add photos of their notes for more specific help.\n`;
   }
 
   // Only mark a breakpoint when there are documents worth caching. Below the
@@ -132,6 +140,7 @@ export const send = action({
     const keyPoints = session?.nuggetNotes?.map((n) => `- ${n.text}`).join('\n');
 
     const system = buildChatSystemPrompt({
+      pages: args.includeNotes ? session?.pagesText || undefined : undefined,
       documentText: args.includeDocuments ? session?.documentText : undefined,
       notes: args.includeNotes ? session?.notesPlainText : undefined,
       nuggetNotes: args.includeNotes ? keyPoints || undefined : undefined,

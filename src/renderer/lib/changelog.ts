@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-11-04',
+    title: 'Nugget reads your pages',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Every page you shoot is now read into text, exactly as you wrote it: your abbreviations and arrows stay, crossed-out bits show crossed out, and any word Nugget can’t read is marked [?] instead of guessed.',
+      },
+      {
+        kind: 'added',
+        text: 'Tap a page to see the photo and its text side by side. Tap any line to fix it; an “edited” tag lets you undo the fix.',
+      },
+      {
+        kind: 'improved',
+        text: 'Key points, study tools and chat now work from your photographed pages. Pages you added before today have a Read pages button.',
+      },
+    ],
+  },
+  {
     version: '0.12.2',
     date: '2026-11-04',
     title: 'Sign-in works on the live site',
