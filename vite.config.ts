@@ -49,13 +49,13 @@ const buildId =
  * insisted was set.
  */
 const PRODUCTION_FALLBACKS: Record<string, string> = {
-  // NugNotes' production Convex deployment and Clerk instance don't exist yet;
-  // fill these in when they do (deploy patch). Empty means "no fallback": the
-  // build then fails rather than shipping an app with no backend. Never point
-  // these at another app's values — a dropped variable would silently connect
-  // NugNotes to that app's live backend.
-  VITE_CONVEX_URL: '',
-  VITE_CLERK_PUBLISHABLE_KEY: '',
+  // NugNotes' own production values (public, safe to commit), used only when a
+  // build doesn't set the variable. Never point these at another app's values:
+  // a dropped variable would silently connect NugNotes to that app's live backend.
+  // Convex production deployment (project nugnotes).
+  VITE_CONVEX_URL: 'https://polite-antelope-357.convex.cloud',
+  // Clerk app "NugNotes", production instance on nugnotes.adhdesigns.dev.
+  VITE_CLERK_PUBLISHABLE_KEY: 'pk_live_Y2xlcmsubnVnbm90ZXMuYWRoZGVzaWducy5kZXYk',
   VITE_R2_PUBLIC_URL: 'https://nugnotes-files.adhdesigns.dev',
 };
 

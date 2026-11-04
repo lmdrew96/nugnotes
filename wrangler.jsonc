@@ -18,6 +18,15 @@
     "not_found_handling": "single-page-application"
   },
 
+  // Custom Domain: Cloudflare creates the DNS record and certificate for it
+  // on the first deploy (nugnotes.adhdesigns.dev is on Nae's Cloudflare zone).
+  "routes": [
+    {
+      "pattern": "nugnotes.adhdesigns.dev",
+      "custom_domain": true
+    }
+  ],
+
   "observability": {
     "enabled": true
   }

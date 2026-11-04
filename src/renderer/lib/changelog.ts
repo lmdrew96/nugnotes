@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.1',
+    date: '2026-11-04',
+    title: 'NugNotes goes live',
+    changes: [
+      {
+        kind: 'added',
+        text: 'NugNotes now lives at nugnotes.adhdesigns.dev, with its own sign-in. Open it on your phone and add it to your home screen to use it like an app.',
+      },
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-11-04',
     title: 'Snap your class notes',
