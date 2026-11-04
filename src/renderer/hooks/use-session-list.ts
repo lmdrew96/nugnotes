@@ -17,9 +17,9 @@ export function useSessionList(recordings: SessionSummary[]) {
     return [...recordings].sort((a, b) => {
       switch (sortOrder) {
         case 'newest':
-          return b.createdAt - a.createdAt;
+          return b.sortAt - a.sortAt;
         case 'oldest':
-          return a.createdAt - b.createdAt;
+          return a.sortAt - b.sortAt;
         case 'az':
           return a.title.localeCompare(b.title);
         case 'za':

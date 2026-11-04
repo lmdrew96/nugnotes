@@ -9,6 +9,7 @@ import type { Id } from '../../../convex/_generated/dataModel';
  */
 export function useSessionMutations() {
   const createSession = useMutation(api.sessions.create);
+  const createForClass = useMutation(api.sessions.createForClass);
   const updateSession = useMutation(api.sessions.update);
   const deleteSession = useMutation(api.sessions.softDelete);
   const restoreSession = useMutation(api.sessions.restore);
@@ -16,6 +17,7 @@ export function useSessionMutations() {
 
   return {
     createSession,
+    createForClass,
     updateSession,
     deleteSession,
     restoreSession,

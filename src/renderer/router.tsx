@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/app-layout';
+import { CaptureView } from '@/components/capture-view';
 import { ExamStudyView } from '@/components/exam/exam-study-view';
 import { FriendsView } from '@/components/friends/friends-view';
-import { HomeView } from '@/components/home-view';
 import { MessagesView } from '@/components/messages/messages-view';
 import { StudyRoomsView } from '@/components/rooms/study-rooms-view';
 import { SharedSessionView } from '@/components/shared-session-view';
@@ -15,7 +15,7 @@ const rootRoute = createRootRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: HomeView,
+  component: CaptureView,
 });
 
 const studyIndexRoute = createRoute({

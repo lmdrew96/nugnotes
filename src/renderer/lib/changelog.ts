@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-11-04',
+    title: 'Snap your class notes',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Home is now a camera for your paper notes: pick the course, keep today’s date, then Shoot pages → Next page → Done. Each page uploads while you shoot the next one.',
+      },
+      {
+        kind: 'added',
+        text: 'Courses are real now. Add them right on Home or in Settings → Study, and sessions are grouped by course and sorted by class date.',
+      },
+      {
+        kind: 'added',
+        text: 'A Pages tab on every session: tap a page to see it big, move it earlier or later, retake it or delete it. Forgot a page? Add pages to any session later, from the camera or your photos.',
+      },
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-11-04',
     title: 'A smarter Nugget',

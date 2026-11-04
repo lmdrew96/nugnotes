@@ -208,8 +208,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   }, [settings, updateSettings]);
 
   // Save settings to Convex
-  const [newCourse, setNewCourse] = useState('');
-
   const saveSettings = useCallback(
     (updates: {
       breakReminders?: boolean;
@@ -217,7 +215,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
       dailyGoalMinutes?: number;
       weeklyGoalMinutes?: number;
       theme?: string;
-      courses?: string[];
       soundEnabled?: boolean;
       timezone?: string;
     }) => {
@@ -271,20 +268,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     } else if (permission === 'denied') {
       toast.error('Notifications blocked. Enable them in your browser settings.');
     }
-  };
-
-  const handleAddCourse = () => {
-    if (!newCourse.trim()) return;
-    const current = settings && '_id' in settings ? (settings.courses ?? []) : [];
-    if (!current.includes(newCourse.trim())) {
-      saveSettings({ courses: [...current, newCourse.trim()] });
-    }
-    setNewCourse('');
-  };
-
-  const handleRemoveCourse = (course: string) => {
-    const current = settings && '_id' in settings ? (settings.courses ?? []) : [];
-    saveSettings({ courses: current.filter((c) => c !== course) });
   };
 
   return (
@@ -350,10 +333,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 onDailyGoalChange={handleDailyGoalChange}
                 weeklyGoal={weeklyGoal}
                 onWeeklyGoalChange={handleWeeklyGoalChange}
-                newCourse={newCourse}
-                onNewCourseChange={setNewCourse}
-                onAddCourse={handleAddCourse}
-                onRemoveCourse={handleRemoveCourse}
               />
             )}
 

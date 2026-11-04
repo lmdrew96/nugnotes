@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { CoursesSection } from '@/components/settings/courses-section';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -35,10 +35,6 @@ interface StudyTabProps {
   onDailyGoalChange: (hours: string, minutes: string) => void;
   weeklyGoal: string;
   onWeeklyGoalChange: (hours: string) => void;
-  newCourse: string;
-  onNewCourseChange: (value: string) => void;
-  onAddCourse: () => void;
-  onRemoveCourse: (course: string) => void;
 }
 
 function formatMinutes(mins: number) {
@@ -63,14 +59,9 @@ export function StudyTab({
   onDailyGoalChange,
   weeklyGoal,
   onWeeklyGoalChange,
-  newCourse,
-  onNewCourseChange,
-  onAddCourse,
-  onRemoveCourse,
 }: StudyTabProps) {
   const id = useId();
   const unlockedIds = new Set(achievements?.map((a) => a.achievementId) ?? []);
-  const courses = (settings && '_id' in settings ? settings.courses : undefined) ?? [];
 
   return (
     <div className="space-y-5">
@@ -180,49 +171,7 @@ export function StudyTab({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${id}-course`} className="text-sm text-foreground">
-          Courses
-        </Label>
-        <p className="text-xs text-muted-foreground">Add your courses to quickly label sessions</p>
-        <div className="flex gap-2">
-          <Input
-            id={`${id}-course`}
-            value={newCourse}
-            onChange={(e) => onNewCourseChange(e.target.value)}
-            placeholder="e.g. CISC 108"
-            className="flex-1 bg-background border-border"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newCourse.trim()) {
-                e.preventDefault();
-                onAddCourse();
-              }
-            }}
-          />
-          <Button variant="secondary" size="sm" onClick={onAddCourse}>
-            Add
-          </Button>
-        </div>
-        {courses.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {courses.map((course) => (
-              <span
-                key={course}
-                className="inline-flex items-center gap-1 rounded-full glass-light px-2.5 py-1 text-xs text-foreground"
-              >
-                {course}
-                <button
-                  type="button"
-                  className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
-                  onClick={() => onRemoveCourse(course)}
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      <CoursesSection />
 
       {/* Stats */}
       {stats && (

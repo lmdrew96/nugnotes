@@ -1,8 +1,56 @@
-import { v } from 'convex/values';
-import { internalMutation, mutation, query } from './_generated/server';
+import { ConvexError, v } from 'convex/values';
+import type { Doc, Id } from './_generated/dataModel';
+import {
+  type MutationCtx,
+  type QueryCtx,
+  internalMutation,
+  mutation,
+  query,
+} from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { formatDateKey, isDateKey } from './dateKey';
+import { deleteAllPages } from './pages';
 import { deleteRoomData } from './ydoc';
 import { sessionDocKey } from './ydocKeys';
+
+/** id → name for the user's courses, to label sessions in lists. */
+const courseNames = async (ctx: QueryCtx, userId: string): Promise<Map<Id<'courses'>, string>> => {
+  const courses = await ctx.db
+    .query('courses')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect();
+  return new Map(courses.map((c) => [c._id, c.name]));
+};
+
+const requireOwnCourse = async (
+  ctx: MutationCtx,
+  userId: string,
+  courseId: Id<'courses'>,
+): Promise<Doc<'courses'>> => {
+  const course = await ctx.db.get(courseId);
+  if (!course || course.userId !== userId) throw new Error('Course not found');
+  return course;
+};
+
+const requireClassDate = (classDate: string): void => {
+  if (!isDateKey(classDate)) {
+    throw new ConvexError({ code: 'BAD_DATE', message: 'That date doesn’t look right.' });
+  }
+};
+
+/** Session fields every list shows: metadata only, with the course's name. */
+const toListItem = (s: Doc<'sessions'>, names: Map<Id<'courses'>, string>) => ({
+  _id: s._id,
+  _creationTime: s._creationTime,
+  title: s.title,
+  createdAt: s.createdAt,
+  updatedAt: s.updatedAt,
+  lectureType: s.lectureType,
+  // The course's name; older sessions fall back to their free-text label.
+  course: (s.courseId && names.get(s.courseId)) || s.course,
+  courseId: s.courseId,
+  classDate: s.classDate,
+});
 
 // List all sessions for the authenticated user (excluding deleted)
 export const list = query({
@@ -27,15 +75,8 @@ export const listMetadata = query({
       .withIndex('by_user_deleted', (q) => q.eq('userId', userId).eq('isDeleted', false))
       .order('desc')
       .collect();
-    return sessions.map((s) => ({
-      _id: s._id,
-      _creationTime: s._creationTime,
-      title: s.title,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-      lectureType: s.lectureType,
-      course: s.course,
-    }));
+    const names = await courseNames(ctx, userId);
+    return sessions.map((s) => toListItem(s, names));
   },
 });
 
@@ -59,11 +100,35 @@ export const get = query({
       .withIndex('by_session', (q) => q.eq('sessionId', args.id))
       .unique();
 
+    const course = session.courseId ? await ctx.db.get(session.courseId) : null;
+
     return {
       ...session,
+      courseName: course?.name ?? session.course,
       notesPlainText: notesDoc?.plainText,
       notesMarkdown: notesDoc?.markdown,
     };
+  },
+});
+
+/** Start a class session (photographed pages): course + local class date. */
+export const createForClass = mutation({
+  args: { courseId: v.id('courses'), classDate: v.string() },
+  handler: async (ctx, { courseId, classDate }): Promise<Id<'sessions'>> => {
+    const userId = await requireAuth(ctx);
+    const course = await requireOwnCourse(ctx, userId, courseId);
+    requireClassDate(classDate);
+    const now = Date.now();
+    return await ctx.db.insert('sessions', {
+      userId,
+      title: `${course.name} · ${formatDateKey(classDate)}`,
+      lectureType: 'general',
+      courseId,
+      classDate,
+      createdAt: now,
+      updatedAt: now,
+      isDeleted: false,
+    });
   },
 });
 
@@ -96,6 +161,8 @@ export const update = mutation({
     title: v.optional(v.string()),
     lectureType: v.optional(v.string()),
     course: v.optional(v.string()),
+    courseId: v.optional(v.id('courses')),
+    classDate: v.optional(v.string()),
     notesPlainText: v.optional(v.string()),
     notesMarkdown: v.optional(v.string()),
     nuggetNotes: v.optional(
@@ -117,6 +184,8 @@ export const update = mutation({
     if (!session || session.userId !== userId || session.isDeleted) {
       throw new Error('Session not found');
     }
+    if (args.courseId) await requireOwnCourse(ctx, userId, args.courseId);
+    if (args.classDate !== undefined) requireClassDate(args.classDate);
 
     // Route notes to separate sessionNotes table
     if (notesPlainText !== undefined || notesMarkdown !== undefined) {
@@ -220,6 +289,7 @@ export const permanentDelete = mutation({
       await ctx.db.delete(notesDoc._id);
     }
     await deleteRoomData(ctx, sessionDocKey(args.id));
+    await deleteAllPages(ctx, args.id);
 
     return await ctx.db.delete(args.id);
   },
@@ -248,14 +318,8 @@ export const listDeletedMetadata = query({
       .withIndex('by_user_deleted', (q) => q.eq('userId', userId).eq('isDeleted', true))
       .order('desc')
       .collect();
-    return sessions.map((s) => ({
-      _id: s._id,
-      _creationTime: s._creationTime,
-      title: s.title,
-      createdAt: s.createdAt,
-      lectureType: s.lectureType,
-      course: s.course,
-    }));
+    const names = await courseNames(ctx, userId);
+    return sessions.map((s) => toListItem(s, names));
   },
 });
 
@@ -282,6 +346,7 @@ export const cleanupOldDeleted = internalMutation({
           await ctx.db.delete(notesDoc._id);
         }
         await deleteRoomData(ctx, sessionDocKey(session._id));
+        await deleteAllPages(ctx, session._id);
 
         await ctx.db.delete(session._id);
         deletedCount++;

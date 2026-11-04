@@ -2,12 +2,25 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
 export default defineSchema({
-  // Study sessions (typed notes, handwriting, uploaded documents)
+  // A student's courses (e.g. PSYC 100). Sessions point here by courseId.
+  courses: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    createdAt: v.number(),
+  }).index('by_user', ['userId']),
+
+  // Study sessions: one class meeting (page photos), or an older typed/uploaded session
   sessions: defineTable({
     userId: v.string(),
     title: v.string(),
     lectureType: v.optional(v.string()),
+    // Legacy free-text course label from before the courses table. Read-only now;
+    // new sessions use courseId.
     course: v.optional(v.string()),
+    courseId: v.optional(v.id('courses')),
+    // The class meeting's date as a local date key, YYYY-MM-DD (not a timestamp,
+    // so it never shifts across time zones).
+    classDate: v.optional(v.string()),
     notesPlainText: v.optional(v.string()),
     nuggetNotes: v.optional(
       v.array(
@@ -26,11 +39,22 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_deleted', ['userId', 'isDeleted'])
     .index('by_user_course', ['userId', 'course'])
+    .index('by_course', ['courseId'])
     .index('by_deleted_at', ['isDeleted', 'deletedAt'])
     .searchIndex('search_notes', {
       searchField: 'notesPlainText',
       filterFields: ['userId', 'isDeleted'],
     }),
+
+  // Photographed note pages of a session, in reading order. The photo lives in R2.
+  pages: defineTable({
+    userId: v.string(),
+    sessionId: v.id('sessions'),
+    storageKey: v.string(),
+    // 0-based position within the session; kept contiguous by convex/pages.ts.
+    order: v.number(),
+    createdAt: v.number(),
+  }).index('by_session_order', ['sessionId', 'order']),
 
   // Session notes (separated from sessions to avoid 1MB document limit)
   sessionNotes: defineTable({

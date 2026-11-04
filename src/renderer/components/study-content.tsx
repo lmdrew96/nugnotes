@@ -1,3 +1,4 @@
+import { SessionPages } from '@/components/session-pages';
 import { StudyNuggetNotes } from '@/components/study-nugget-notes';
 import type { Recording } from '@/components/study-view';
 import { Button } from '@/components/ui/button';
@@ -5,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCourses } from '@/hooks/use-courses';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { useStudySettings } from '@/hooks/use-productivity';
+import { friendlyError } from '@/lib/errors';
 import { renderMarkdown } from '@/lib/render-markdown';
 import { useMutation } from 'convex/react';
-import { BookOpen, Cat, Check, FileImage, FileText, Pencil, X } from 'lucide-react';
+import { BookOpen, Camera, Cat, Check, FileImage, FileText, Pencil, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -36,9 +39,7 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const courseInputRef = useRef<HTMLInputElement>(null);
 
-  const { settings: studySettings, updateSettings } = useStudySettings();
-  const savedCourses: string[] =
-    studySettings && '_id' in studySettings ? (studySettings.courses ?? []) : [];
+  const { courses: savedCourses = [], createCourse } = useCourses();
 
   const updateSession = useMutation(api.sessions.update);
   const startEditTitle = () => {
@@ -70,9 +71,13 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
     setEditingCourse(false);
   };
 
-  const selectCourse = async (course: string) => {
-    if (course !== (recording.course ?? '')) {
-      await updateSession({ id: recording.id as Id<'sessions'>, course: course || undefined });
+  const selectCourse = async (courseId: Id<'courses'>) => {
+    try {
+      if (courseId !== recording.courseId) {
+        await updateSession({ id: recording.id as Id<'sessions'>, courseId });
+      }
+    } catch (error) {
+      toast.error(friendlyError(error, 'Couldn’t change the course. Try again.'));
     }
     closeCoursePopover();
   };
@@ -80,11 +85,12 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   const saveNewCourse = async () => {
     const trimmed = courseDraft.trim();
     if (!trimmed) return;
-    await updateSession({ id: recording.id as Id<'sessions'>, course: trimmed });
-    // Add to saved courses list if not already present (case-insensitive)
-    const alreadyExists = savedCourses.some((c) => c.toLowerCase() === trimmed.toLowerCase());
-    if (!alreadyExists) {
-      await updateSettings({ courses: [...savedCourses, trimmed] });
+    try {
+      // Returns the existing course if the name is already there.
+      const courseId = await createCourse({ name: trimmed });
+      await updateSession({ id: recording.id as Id<'sessions'>, courseId });
+    } catch (error) {
+      toast.error(friendlyError(error, 'Couldn’t add that course. Try again.'));
     }
     closeCoursePopover();
   };
@@ -103,7 +109,16 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   // Typed notes are gone (paper-first); sessions typed before that keep a
   // read-only copy.
   const hasTypedNotes = !!recording.notesMarkdown?.trim();
-  const defaultTab = hasTypedNotes ? 'notes' : hasDocumentText ? 'document' : 'nugget-notes';
+  // Pages are the owner's only (the server returns none to anyone else).
+  const showPages = !readOnly;
+  const defaultTab =
+    showPages && (recording.classDate || !hasTypedNotes)
+      ? 'pages'
+      : hasTypedNotes
+        ? 'notes'
+        : hasDocumentText
+          ? 'document'
+          : 'nugget-notes';
 
   return (
     <div className="h-full flex flex-col">
@@ -216,21 +231,22 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
                 <div className="mb-2">
                   <p className="text-xs text-muted-foreground px-1 mb-1">Your courses</p>
                   <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                    {savedCourses.map((course) => (
-                      <button
-                        key={course}
-                        type="button"
-                        onClick={() => selectCourse(course)}
-                        className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-secondary transition-colors w-full ${
-                          recording.course === course
-                            ? 'text-primary font-medium'
-                            : 'text-foreground'
-                        }`}
-                      >
-                        {recording.course === course && <Check className="h-3 w-3 shrink-0" />}
-                        <span className={recording.course === course ? '' : 'pl-5'}>{course}</span>
-                      </button>
-                    ))}
+                    {savedCourses.map((course) => {
+                      const selected = recording.courseId === course._id;
+                      return (
+                        <button
+                          key={course._id}
+                          type="button"
+                          onClick={() => void selectCourse(course._id)}
+                          className={`flex items-center gap-2 text-left text-xs px-2 py-1.5 rounded hover:bg-secondary transition-colors w-full ${
+                            selected ? 'text-primary font-medium' : 'text-foreground'
+                          }`}
+                        >
+                          {selected && <Check className="h-3 w-3 shrink-0" />}
+                          <span className={selected ? '' : 'pl-5'}>{course.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="border-t border-border my-2" />
                 </div>
@@ -293,6 +309,12 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
 
       <Tabs defaultValue={defaultTab} className="flex-1 min-h-0">
         <TabsList className="mb-3 h-8">
+          {showPages && (
+            <TabsTrigger value="pages" className="gap-1.5 text-xs h-7 px-3">
+              <Camera className="h-3 w-3" />
+              Pages
+            </TabsTrigger>
+          )}
           {hasTypedNotes && (
             <TabsTrigger value="notes" className="gap-1.5 text-xs h-7 px-3">
               <FileText className="h-3 w-3" />
@@ -321,6 +343,12 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
                 {renderMarkdown(recording.documentText ?? '')}
               </div>
             </ScrollArea>
+          </TabsContent>
+        )}
+
+        {showPages && (
+          <TabsContent value="pages" className="h-[calc(100%-2rem)] mt-0">
+            <SessionPages sessionId={recording.id as Id<'sessions'>} />
           </TabsContent>
         )}
 

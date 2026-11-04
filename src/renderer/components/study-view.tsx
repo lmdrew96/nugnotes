@@ -12,6 +12,7 @@ import { useMatch, useNavigate } from '@tanstack/react-router';
 import { PanelLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { Id } from '../../../convex/_generated/dataModel';
+import { dateKeyToTime, formatDateKey } from '../../../convex/dateKey';
 
 type SessionId = Id<'sessions'>;
 
@@ -20,6 +21,8 @@ export interface SessionSummary {
   title: string;
   date: string;
   createdAt: number;
+  /** When the class met (class date), else when the session was made. Sorts the list. */
+  sortAt: number;
   lectureType?: string;
   course?: string;
 }
@@ -32,7 +35,10 @@ export interface Recording {
   /** Markdown copy of the notes, for read-only views. */
   notesMarkdown: string;
   lectureType?: string;
+  /** The course's name (or an older session's free-text label). */
   course?: string;
+  courseId?: Id<'courses'>;
+  classDate?: string;
   nuggetNotes?: { text: string }[];
   documentText?: string;
 }
@@ -43,6 +49,24 @@ const formatDate = (timestamp: number) =>
     day: 'numeric',
     year: 'numeric',
   });
+
+/** A list row: class sessions show and sort by their class date. */
+const toSummary = (session: {
+  _id: string;
+  title: string;
+  createdAt: number;
+  classDate?: string;
+  lectureType?: string;
+  course?: string;
+}): SessionSummary => ({
+  id: session._id,
+  title: session.title,
+  date: session.classDate ? formatDateKey(session.classDate) : formatDate(session.createdAt),
+  createdAt: session.createdAt,
+  sortAt: session.classDate ? dateKeyToTime(session.classDate) : session.createdAt,
+  lectureType: session.lectureType,
+  course: session.course,
+});
 
 export function StudyView() {
   const isMobile = useIsMobile();
@@ -106,33 +130,22 @@ export function StudyView() {
   const fullSession = useSession(selectedId as SessionId | null);
 
   // Sidebar gets lightweight metadata only — no notes or document text
-  const sidebarRecordings: SessionSummary[] = sessions.map((session) => ({
-    id: session._id,
-    title: session.title,
-    date: formatDate(session.createdAt),
-    createdAt: session.createdAt,
-    lectureType: session.lectureType,
-    course: session.course,
-  }));
-
-  const trashedRecordings: SessionSummary[] = trashedSessions.map((session) => ({
-    id: session._id,
-    title: session.title,
-    date: formatDate(session.createdAt),
-    createdAt: session.createdAt,
-    lectureType: session.lectureType,
-    course: session.course,
-  }));
+  const sidebarRecordings: SessionSummary[] = sessions.map(toSummary);
+  const trashedRecordings: SessionSummary[] = trashedSessions.map(toSummary);
 
   // Build full Recording for StudyContent from sessions.get result
   const selectedRecording: Recording | null = fullSession
     ? {
         id: fullSession._id,
         title: fullSession.title,
-        date: formatDate(fullSession.createdAt),
+        date: fullSession.classDate
+          ? formatDateKey(fullSession.classDate)
+          : formatDate(fullSession.createdAt),
         notesMarkdown: fullSession.notesMarkdown || '',
         lectureType: fullSession.lectureType,
-        course: fullSession.course,
+        course: fullSession.courseName,
+        courseId: fullSession.courseId,
+        classDate: fullSession.classDate,
         nuggetNotes: fullSession.nuggetNotes,
         documentText: fullSession.documentText,
       }
