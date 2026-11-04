@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.2',
+    date: '2026-11-04',
+    title: 'Sign-in works on the live site',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Signing in on nugnotes.adhdesigns.dev no longer fails to load.',
+      },
+    ],
+  },
+  {
     version: '0.12.1',
     date: '2026-11-04',
     title: 'NugNotes goes live',
