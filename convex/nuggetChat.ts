@@ -88,9 +88,9 @@ Your personality:
     volatilePrompt += `\nNote: The student hasn't included any notes or documents in this conversation. You can still help with general study questions, but encourage them to open a session, write some notes or upload a document for more specific help.\n`;
   }
 
-  // Only mark a breakpoint when there are documents worth caching. Haiku's
-  // minimum cacheable prefix is 4096 tokens — below that a breakpoint silently
-  // does nothing, so short sessions just skip it.
+  // Only mark a breakpoint when there are documents worth caching. Below the
+  // model's minimum cacheable prefix a breakpoint silently does nothing, so
+  // short prompts simply don't cache.
   const system: Anthropic.Messages.TextBlockParam[] = documents
     ? [
         { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
@@ -147,7 +147,7 @@ export const send = action({
         // The only reliable signal that the cache is working. If
         // cache_read_input_tokens stays 0 across turns of one conversation,
         // something in the prefix is still varying. cachedChars tells a miss
-        // from a prefix too small to cache (Haiku: under ~16k chars).
+        // from a prefix too small to cache.
         console.log(
           `[nuggetChat] tokens in=${usage.input_tokens} cached_chars=${cachedChars} cache_write=${usage.cache_creation_input_tokens ?? 0} cache_read=${usage.cache_read_input_tokens ?? 0}`,
         );

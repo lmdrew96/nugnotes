@@ -18,7 +18,7 @@ Server-side functions for the NugNotes app. All functions run on the Convex plat
 | `roomNotes.ts` | Queries + Mutations | Collaborative notes per study room |
 | `prompts.ts` | Utility | Note generation prompt templates by lecture type (STEM, Humanities, etc.) |
 | `citations.ts` | Utility | Parses `[cite:XXXXX]` patterns from AI-generated notes |
-| `config.ts` | Config | Shared AI model configuration (`AI_MODEL` — currently Haiku 4.5) |
+| `config.ts` | Config | Shared AI model configuration (`AI_MODEL` — currently Haiku 5.5) |
 | `productivity.ts` | Queries + Mutations | Study goals, daily stats, streaks, break reminders, achievements |
 | `authHelpers.ts` | Utility | Shared auth helpers — `requireAuth()` + `requireAuthWithProfile()` |
 | `userProfiles.ts` | Queries + Mutations | User profiles — create, get, username search, display name/avatar |

@@ -183,7 +183,6 @@ export const generateExamTool = action({
     // Build the prompt based on tool type
     let prompt: string;
     let maxTokens = 4096;
-    const temperature = 0.4;
 
     switch (args.toolType) {
       case 'summary':
@@ -215,7 +214,7 @@ export const generateExamTool = action({
         throw new ConvexError(`Unknown tool type: ${args.toolType}`);
     }
 
-    const response = await callClaude(prompt, maxTokens, temperature);
+    const response = await callClaude(prompt, maxTokens);
     const jsonStr = extractJson(response);
 
     // Validate it's parseable JSON

@@ -107,13 +107,13 @@ Shared helpers worth knowing before writing new code:
 - `convex/studyTools.ts` — exports `callClaude`, `extractJson`
 - `convex/studyRooms.ts` — `requireRoomMember` / `requireRoomHost`, `postSystemMessage` (rooms are parked)
 - `convex/messagingHelpers.ts` — `verifyFriendship`
-- `convex/config.ts` — centralized `AI_MODEL` (Haiku 4.5 for all endpoints)
+- `convex/config.ts` — centralized `AI_MODEL` (Haiku 5.5) and `AI_MODEL_SONNET` (Sonnet 5.5)
 
 ---
 
 ## AI Architecture
 
-All AI endpoints use **Haiku 4.5** via `AI_MODEL` in `convex/config.ts`. Don't hardcode a model, and don't reach for Opus-tier by default.
+AI endpoints use **Haiku 5.5** via `AI_MODEL` in `convex/config.ts` (the exam brain uses `AI_MODEL_SONNET`, Sonnet 5.5). Don't hardcode a model, and don't reach for Opus-tier by default. Both 5.5 models 400 on `temperature`/`top_p`/`top_k`, so `callClaude` doesn't take them; it keeps Haiku thinking-off, reads text blocks by type, and turns `stop_reason: "refusal"` into an `AI_DECLINED` ConvexError.
 
 **No notes editor.** The BlockNote editor was removed in v0.10.0 (paper-first). Sessions typed before then keep `notesPlainText` / `notesMarkdown`, shown read-only on the Study page. The Y.Doc backend (`convex/ydoc.ts`, `ydocAwareness.ts`, `ydocKeys.ts`, the `ydoc*` tables) is still there because session delete/share call it; nothing on the client writes to it any more.
 

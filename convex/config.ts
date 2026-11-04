@@ -3,14 +3,24 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { ConvexError } from 'convex/values';
 
 /**
  * AI Model Configuration
- * Haiku 4.5 — fast, cost-effective for per-message chat, study tools, games
- * Sonnet 5  — higher capability for session indexing (exam room brain)
+ * Haiku 5.5  — fast, cost-effective for per-message chat, study tools, games
+ * Sonnet 5.5 — higher capability for session indexing (exam room brain)
+ *
+ * Neither accepts temperature/top_p/top_k (a non-default value is a 400), so
+ * callClaude doesn't take them.
  */
-export const AI_MODEL = 'claude-haiku-4-5-20251001';
-export const AI_MODEL_SONNET = 'claude-sonnet-5';
+export const AI_MODEL = 'claude-haiku-5-5';
+export const AI_MODEL_SONNET = 'claude-sonnet-5-5';
+
+/** Shown when the model declines a request (stop_reason "refusal"). */
+export const AI_DECLINED = {
+  code: 'AI_DECLINED',
+  message: "Nugget can't help with that one. Try rewording it or using different material.",
+} as const;
 
 // ─── Shared Claude API Utility ──────────────────────────────
 
@@ -32,7 +42,6 @@ interface CallClaudeOptions {
   /** Model to use. Defaults to AI_MODEL (Haiku). */
   model?: string;
   maxTokens: number;
-  temperature?: number;
   system?: SystemPrompt;
   messages: Array<{ role: 'user' | 'assistant'; content: MessageContent }>;
   /**
@@ -53,16 +62,23 @@ export async function callClaude(options: CallClaudeOptions): Promise<string> {
     throw new Error('ANTHROPIC_API_KEY not configured');
   }
 
+  const model = options.model ?? AI_MODEL;
   const anthropic = new Anthropic({ apiKey });
   const response = await anthropic.messages.create({
-    model: options.model ?? AI_MODEL,
+    model,
     max_tokens: options.maxTokens,
-    ...(options.temperature !== undefined && { temperature: options.temperature }),
+    // Haiku 4.5 never thought; Haiku 5.5 thinks by default (effort medium),
+    // which would eat the small max_tokens these routes were sized for. Keep
+    // it thinking-off, as before. Sonnet keeps its default adaptive thinking.
+    ...(model === AI_MODEL && { thinking: { type: 'disabled' as const } }),
     ...(options.system && { system: options.system }),
     messages: options.messages,
   });
 
   options.onUsage?.(response.usage);
 
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  if (response.stop_reason === 'refusal') throw new ConvexError(AI_DECLINED);
+
+  // A response can start with thinking blocks; the answer is the text blocks.
+  return response.content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('');
 }

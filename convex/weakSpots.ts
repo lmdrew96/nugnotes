@@ -177,7 +177,7 @@ export const generateTargetedReview = action({
     const lectureType: LectureType = (allSessions[0]?.lectureType as LectureType) ?? 'general';
 
     const prompt = getTargetedReviewPrompt(weakTopics, relevantSessions, lectureType);
-    const response = await callClaude(prompt, 4096, 0.4);
+    const response = await callClaude(prompt, 4096);
     const jsonStr = extractJson(response);
 
     // Validate

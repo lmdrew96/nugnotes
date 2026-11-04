@@ -113,7 +113,7 @@ export const generateExamSimulation = action({
       questionCount,
     );
 
-    const response = await callClaude(prompt, 8192, 0.4);
+    const response = await callClaude(prompt, 8192);
     const jsonStr = extractJson(response);
 
     // Validate

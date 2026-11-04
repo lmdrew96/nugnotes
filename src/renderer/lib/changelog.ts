@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.11.0',
+    date: '2026-11-04',
+    title: 'A smarter Nugget',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Nugget now runs on newer Claude models (Haiku 5.5 and Sonnet 5.5), for chat, key points, study tools and games.',
+      },
+      {
+        kind: 'improved',
+        text: 'If Nugget can’t help with a request, it now says so instead of coming back empty.',
+      },
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-11-04',
     title: 'Paper first',

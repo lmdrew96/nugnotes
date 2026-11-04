@@ -24,7 +24,6 @@ export const generateKeyPoints = action({
 
     const reply = await callClaude({
       maxTokens: 600,
-      temperature: 0.2,
       messages: [
         {
           role: 'user',

@@ -718,8 +718,8 @@ export const generateQuestions = internalAction({
     }
 
     const response = lecture
-      ? await callClaudeWithLecture(lecture, prompt, maxTokens, 0.4)
-      : await callClaude(prompt, maxTokens, 0.4);
+      ? await callClaudeWithLecture(lecture, prompt, maxTokens)
+      : await callClaude(prompt, maxTokens);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyGames.saveQuestions, {

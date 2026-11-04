@@ -52,18 +52,16 @@ export function extractJson(text: string): string {
  *
  * The lecture comes first and is identical for every tool on a session, so
  * running flashcards, then a quiz, then a concept map reads it from cache after
- * the first. Below Haiku's 4096-token minimum the breakpoint silently does
- * nothing — no write, no extra cost — so short sessions simply don't cache.
+ * the first. Below the model's minimum cacheable prefix the breakpoint silently
+ * does nothing — no write, no extra cost — so short sessions simply don't cache.
  */
 export const callClaudeWithLecture = (
   lecture: string,
   instruction: string,
   maxTokens: number,
-  temperature: number,
 ): Promise<string> =>
   callClaudeShared({
     maxTokens,
-    temperature,
     system: [
       {
         type: 'text',
@@ -78,15 +76,10 @@ export const callClaudeWithLecture = (
       ),
   });
 
-/** Call Claude with the given prompt and settings */
-export const callClaude = (
-  prompt: string,
-  maxTokens: number,
-  temperature: number,
-): Promise<string> =>
+/** Call Claude with the given prompt */
+export const callClaude = (prompt: string, maxTokens: number): Promise<string> =>
   callClaudeShared({
     maxTokens,
-    temperature,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -337,7 +330,7 @@ export const generateSummary = action({
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getSummaryPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.3);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -360,7 +353,7 @@ export const generateKeyConcepts = action({
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getKeyConceptsPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.2);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -387,7 +380,7 @@ export const generateFlashcards = action({
     const count = args.count ?? 10;
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getFlashcardPrompt(lectureType, count);
-    const response = await callClaudeWithLecture(lecture, prompt, 3072, 0.4);
+    const response = await callClaudeWithLecture(lecture, prompt, 3072);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -414,7 +407,7 @@ export const generateQuiz = action({
     const questionCount = args.questionCount ?? 10;
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getQuizPrompt(lectureType, questionCount);
-    const response = await callClaudeWithLecture(lecture, prompt, 4096, 0.4);
+    const response = await callClaudeWithLecture(lecture, prompt, 4096);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -437,7 +430,7 @@ export const generateConceptMap = action({
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getConceptMapPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.2);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -460,7 +453,7 @@ export const generateEli5 = action({
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getEli5Prompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048, 0.5);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {

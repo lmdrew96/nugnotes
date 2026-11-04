@@ -445,8 +445,8 @@ Extract 3-8 topics. Each topic should have 2-6 key concepts. Use clear, concise 
     try {
       const responseText = await callClaude({
         model: AI_MODEL_SONNET,
-        maxTokens: 1024,
-        temperature: 0.2,
+        // Sonnet thinks by default and thinking counts against max_tokens.
+        maxTokens: 4096,
         messages: [{ role: 'user', content: prompt }],
       });
       const jsonStr = extractJson(responseText);
