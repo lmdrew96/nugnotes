@@ -1,4 +1,3 @@
-import { NotesPanel } from '@/components/notes-panel';
 import { StudyNuggetNotes } from '@/components/study-nugget-notes';
 import type { Recording } from '@/components/study-view';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ interface StudyContentProps {
   recording: Recording;
   sidebarCollapsed?: boolean;
   /**
-   * Someone else's session (shared link, study room). Title, course and notes
+   * Someone else's session (shared link, study room). Title and course
    * become read-only — those write to the session, and only its owner may.
    */
   readOnly?: boolean;
@@ -101,8 +100,10 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   const hasDocumentText = !!recording.documentText;
   const hasNuggetNotes = !!recording.nuggetNotes && recording.nuggetNotes.length > 0;
 
-  // Viewers of someone else's session with no notes land on the document instead.
-  const defaultTab = readOnly && !recording.notesMarkdown && hasDocumentText ? 'document' : 'notes';
+  // Typed notes are gone (paper-first); sessions typed before that keep a
+  // read-only copy.
+  const hasTypedNotes = !!recording.notesMarkdown?.trim();
+  const defaultTab = hasTypedNotes ? 'notes' : hasDocumentText ? 'document' : 'nugget-notes';
 
   return (
     <div className="h-full flex flex-col">
@@ -292,17 +293,19 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
 
       <Tabs defaultValue={defaultTab} className="flex-1 min-h-0">
         <TabsList className="mb-3 h-8">
-          <TabsTrigger value="notes" className="gap-1.5 text-xs h-7 px-3">
-            <FileText className="h-3 w-3" />
-            Notes
-          </TabsTrigger>
+          {hasTypedNotes && (
+            <TabsTrigger value="notes" className="gap-1.5 text-xs h-7 px-3">
+              <FileText className="h-3 w-3" />
+              Notes
+            </TabsTrigger>
+          )}
           {hasDocumentText && (
             <TabsTrigger value="document" className="gap-1.5 text-xs h-7 px-3">
               <FileImage className="h-3 w-3" />
               Extracted Text
             </TabsTrigger>
           )}
-          {(hasNuggetNotes || !readOnly) && (
+          {(hasNuggetNotes || !readOnly || defaultTab === 'nugget-notes') && (
             <TabsTrigger value="nugget-notes" className="gap-1.5 text-xs h-7 px-3">
               <Cat className="h-3 w-3" />
               Key Points
@@ -321,29 +324,15 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
           </TabsContent>
         )}
 
-        {/* Kept mounted while another tab shows: unmounting the editor right
-            after an edit would lose it, and coming back is instant. */}
-        <TabsContent
-          value="notes"
-          forceMount
-          className="h-[calc(100%-2rem)] mt-0 data-[state=inactive]:hidden"
-        >
-          {readOnly ? (
+        {hasTypedNotes && (
+          <TabsContent value="notes" className="h-[calc(100%-2rem)] mt-0">
             <ScrollArea className="h-full rounded-xl glass p-4">
-              {recording.notesMarkdown ? (
-                <div className="space-y-0.5 text-xs leading-relaxed text-foreground/90">
-                  {renderMarkdown(recording.notesMarkdown)}
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap leading-relaxed text-xs text-foreground/90">
-                  No notes yet
-                </p>
-              )}
+              <div className="space-y-0.5 text-xs leading-relaxed text-foreground/90">
+                {renderMarkdown(recording.notesMarkdown ?? '')}
+              </div>
             </ScrollArea>
-          ) : (
-            <NotesPanel key={recording.id} sessionId={recording.id as Id<'sessions'>} />
-          )}
-        </TabsContent>
+          </TabsContent>
+        )}
 
         <TabsContent value="nugget-notes" className="h-[calc(100%-2rem)] mt-0">
           <StudyNuggetNotes

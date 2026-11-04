@@ -7,7 +7,7 @@
 Vite + React + Convex + TypeScript, using **pnpm**. After modifying dependencies or moving packages between deps/devDeps, always run `pnpm install` to regenerate the lockfile before committing.
 
 NugNotes is an ADHD-friendly study app with no audio — a **pure web app** served as static assets from Cloudflare Workers. It is a clean-break fork of ScribeCat-v3 (no syncing back).
-Typed notes, handwriting and uploaded documents → AI notes → Study tools → Collaborative studying
+**Paper-first (spec v2, Nov 4 2026):** photographed handwritten notes → faithful transcripts → concepts, threads, whiskers and contradictions across a course's sessions → Nugget quizzes. No typed notes. Study rooms and exam rooms are parked: hidden from the nav, code kept.
 
 **Spec:** `docs/NUGNOTES-SPEC.md` — read it before starting work. Patches live in ChaosPatch project `nugnotes`.
 
@@ -105,7 +105,7 @@ Read existing files in `convex/` for the current idiom rather than working from 
 Shared helpers worth knowing before writing new code:
 - `convex/authHelpers.ts` — `requireAuth`, `requireAuthWithProfile`
 - `convex/studyTools.ts` — exports `callClaude`, `extractJson`
-- `convex/studyRooms.ts` — `requireRoomMember` / `requireRoomHost`, `postSystemMessage`
+- `convex/studyRooms.ts` — `requireRoomMember` / `requireRoomHost`, `postSystemMessage` (rooms are parked)
 - `convex/messagingHelpers.ts` — `verifyFriendship`
 - `convex/config.ts` — centralized `AI_MODEL` (Haiku 4.5 for all endpoints)
 
@@ -115,9 +115,9 @@ Shared helpers worth knowing before writing new code:
 
 All AI endpoints use **Haiku 4.5** via `AI_MODEL` in `convex/config.ts`. Don't hardcode a model, and don't reach for Opus-tier by default.
 
-**Notes editor:** BlockNote (MPL-2.0, built on ProseMirror/TipTap; replaced SuperDoc in v0.4.0). Each note is a Y.Doc stored in Convex as an update log (`convex/ydoc.ts`, keyed `session:<id>` / `room:<id>`, BlockNote's XML fragment `blocknote`), synced on the page by `src/editor/convex-provider.ts`. `components/notes-editor.tsx` mounts it and saves plain-text + markdown copies (for the AI and read-only views) about a second after edits settle. `src/editor/` also holds the schema (font + font-size styles, Mac Shift+Cmd+arrow selection), the toolbar, and the font list (faces in `styles/editor-fonts.css`). Don't use BlockNote's `xl-*` packages: they're GPL or commercial.
+**No notes editor.** The BlockNote editor was removed in v0.10.0 (paper-first). Sessions typed before then keep `notesPlainText` / `notesMarkdown`, shown read-only on the Study page. The Y.Doc backend (`convex/ydoc.ts`, `ydocAwareness.ts`, `ydocKeys.ts`, the `ydoc*` tables) is still there because session delete/share call it; nothing on the client writes to it any more.
 
-Every AI feature works from a session's material — typed notes plus uploaded document text — built by `convex/studyMaterial.ts` (`buildMaterial`, `requireEnoughMaterial` → friendly `NOT_ENOUGH_MATERIAL` ConvexError, shown via `lib/errors.ts` `friendlyError`). Full note generation runs via `convex/ai.ts`, uses lecture-type-aware prompts from `convex/prompts.ts`, and outputs markdown converted by `lib/markdown-to-tiptap.ts`.
+Every AI feature works from a session's material — old typed notes plus uploaded document text — built by `convex/studyMaterial.ts` (`buildMaterial`, `requireEnoughMaterial` → friendly `NOT_ENOUGH_MATERIAL` ConvexError, shown via `lib/errors.ts` `friendlyError`). `convex/ai.ts` `generateNotes` ("draft notes from my document") has no caller since the editor went.
 
 ---
 
@@ -168,7 +168,7 @@ Convex dashboard: `npx convex dashboard` — view data, run queries, check funct
 
 ## Styling & Theming
 
-6 themes via CSS variables in `src/renderer/styles/globals.css`: Nugg's Favorite (default), Purring Pastels, Void Kitty, Chaos Cat, High Contrast Dark, High Contrast Light. All include glassmorphism. Each defines `--font-color-1` through `--font-color-8` for the editor toolbar. Switching via `ThemeProvider`.
+6 themes via CSS variables in `src/renderer/styles/globals.css`: Nugg's Favorite (default), Purring Pastels, Void Kitty, Chaos Cat, High Contrast Dark, High Contrast Light. All include glassmorphism. Switching via `ThemeProvider`.
 
 **Never wrap raw hex values in `hsl()`.** Check the existing pattern in `globals.css` before applying color changes.
 

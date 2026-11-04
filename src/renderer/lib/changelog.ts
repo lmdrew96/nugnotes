@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-11-04',
+    title: 'Paper first',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'NugNotes is turning into a home for your paper notes. The typed-notes editor is gone: Home now starts a session from photos, PDFs or a quick sketch. Notes you typed before stay readable on each session’s Study page.',
+      },
+      {
+        kind: 'improved',
+        text: 'Study rooms and exam rooms are resting for now, so they’re out of the menu. Nothing in them was deleted.',
+      },
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-10-05',
     title: 'Themes that breathe',

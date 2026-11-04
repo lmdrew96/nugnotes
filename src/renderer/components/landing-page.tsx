@@ -7,15 +7,15 @@ import tosContent from '../../../docs/TERMS_OF_SERVICE.md?raw';
 const FEATURES = [
   {
     emoji: '📝',
-    title: 'Write It Your Way',
-    desc: 'Type notes, sketch by hand, or snap a photo of the whiteboard. Every session saves itself.',
+    title: 'Keep Your Paper',
+    desc: 'Take notes on paper like you already do, then snap the pages. Every session saves itself.',
     color: 'from-[var(--landing-teal-soft)]/20 to-[var(--landing-teal-deep)]/20',
     border: 'border-[var(--landing-teal-soft)]/30',
   },
   {
     emoji: '✨',
-    title: 'Nugget Drafts Notes',
-    desc: "Upload a PDF or a photo and Nugget turns it into organized notes you can edit. The cat's got you.",
+    title: 'Bring Your Readings',
+    desc: "Add slides, readings or a photo of the whiteboard and Nugget pulls out the text to study from. The cat's got you.",
     color: 'from-[var(--landing-amber)]/20 to-[var(--landing-purple-dusty)]/20',
     border: 'border-[var(--landing-amber)]/30',
   },
@@ -32,13 +32,6 @@ const FEATURES = [
     desc: 'Confused about something? Ask the AI chat. It reads your notes.',
     color: 'from-[var(--landing-lavender)]/10 to-[var(--landing-purple-deep)]/20',
     border: 'border-[var(--landing-lavender)]/20',
-  },
-  {
-    emoji: '🎮',
-    title: 'Study Together',
-    desc: 'Create study rooms, share sessions, and battle friends in live quiz games. Learning is better with chaos.',
-    color: 'from-[var(--landing-amber)]/20 to-[var(--landing-green)]/10',
-    border: 'border-[var(--landing-amber)]/25',
   },
 ] as const;
 

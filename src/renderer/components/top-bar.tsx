@@ -3,24 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useSessionContext } from '@/contexts/session-context';
 import { useChangelog } from '@/hooks/use-changelog';
-import { usePendingExamRoomCount } from '@/hooks/use-exam-room';
 import { useFriends } from '@/hooks/use-friends';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useUnreadCount } from '@/hooks/use-messaging';
-import { usePendingRoomCount } from '@/hooks/use-study-rooms';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import {
-  BookOpen,
-  Cat,
-  DoorOpen,
-  GraduationCap,
-  Home,
-  Menu,
-  MessageSquare,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { BookOpen, Cat, Home, Menu, MessageSquare, Settings, Users } from 'lucide-react';
 import { useState } from 'react';
 
 interface NavItem {
@@ -37,8 +25,6 @@ export function TopBar() {
   const { setChatOpen } = useSessionContext();
   const { pendingCount } = useFriends();
   const unreadCount = useUnreadCount();
-  const pendingRoomCount = usePendingRoomCount();
-  const pendingExamRoomCount = usePendingExamRoomCount();
   const isMobile = useIsMobile();
   const { hasUnseen: hasUnseenChanges } = useChangelog();
   const navigate = useNavigate();
@@ -48,14 +34,8 @@ export function TopBar() {
   const isStudy = currentPath.startsWith('/study');
   const isFriends = currentPath === '/friends';
   const isMessages = currentPath.startsWith('/messages');
-  const isRooms = currentPath.startsWith('/rooms');
-  const isExam = currentPath.startsWith('/exam');
 
-  const totalBadgeCount =
-    (pendingCount || 0) +
-    (unreadCount || 0) +
-    (pendingRoomCount || 0) +
-    (pendingExamRoomCount || 0);
+  const totalBadgeCount = (pendingCount || 0) + (unreadCount || 0);
 
   const navItems: NavItem[] = [
     { to: '/', icon: <Home className="h-4 w-4" />, label: 'Home', isActive: isHome },
@@ -74,20 +54,7 @@ export function TopBar() {
       isActive: isMessages,
       badge: unreadCount,
     },
-    {
-      to: '/rooms',
-      icon: <DoorOpen className="h-4 w-4" />,
-      label: 'Rooms',
-      isActive: isRooms,
-      badge: pendingRoomCount,
-    },
-    {
-      to: '/exam',
-      icon: <GraduationCap className="h-4 w-4" />,
-      label: 'Exam',
-      isActive: isExam,
-      badge: pendingExamRoomCount,
-    },
+    // Study rooms and exam rooms are parked (spec v2): routes and code stay, nav doesn't.
   ];
 
   return (

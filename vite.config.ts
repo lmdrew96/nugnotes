@@ -153,9 +153,6 @@ export default defineConfig(({ mode }) => {
         workbox: {
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MiB (allow large preview images)
           globPatterns: ['**/*.{js,css,html,ico,png,PNG,svg,woff2,webp}'],
-          // The notes editor's fonts (~2 MB, assets/editor-fonts/) download
-          // only when a note uses them; precaching would fetch all of them.
-          globIgnores: ['assets/*-{normal,italic}-*.woff2'],
           runtimeCaching: [
             {
               // Convex backend — never cache (real-time data)
