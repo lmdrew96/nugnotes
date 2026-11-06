@@ -197,6 +197,9 @@
 /* Background mesh gradient orbs */
 .app-bg-orbs {
   position: relative;
+  /* Own stacking context, so the orbs (z-index -1) sit behind every child but
+     still above the page background. */
+  isolation: isolate;
 }
 .app-bg-orbs::before,
 .app-bg-orbs::after {
@@ -206,7 +209,7 @@
   filter: blur(100px);
   opacity: var(--orb-opacity);
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 .app-bg-orbs::before {
   width: 500px;

@@ -33,7 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.14.0',
+    version: '0.14.1',
+    label: '0.14.0 – 0.14.1',
     date: '2026-11-05',
     title: 'Transcripts keep the shape of your page',
     changes: [
@@ -52,6 +53,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'added',
         text: 'A Read again button on any page, so pages read before today can pick up the new layout.',
+      },
+      {
+        kind: 'fixed',
+        text: 'The glowing background blobs on the welcome page now stay behind the cards instead of washing over them.',
       },
     ],
   },
