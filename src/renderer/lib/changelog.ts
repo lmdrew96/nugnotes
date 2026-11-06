@@ -33,7 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.16.0',
+    version: '0.16.1',
+    label: '0.16.0 – 0.16.1',
     date: '2026-11-05',
     title: 'Threads: see ideas run through your course',
     changes: [
@@ -52,6 +53,14 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'added',
         text: 'New pages and readings are read for concepts on their own. Sessions from before today have a Find concepts button.',
+      },
+      {
+        kind: 'improved',
+        text: 'A bullet that wraps onto the next line of paper now stays together as one line in the transcript. Press Read again on a page to get it.',
+      },
+      {
+        kind: 'improved',
+        text: 'Concepts are found by a stronger model, so the same idea in different words joins one thread more reliably.',
       },
     ],
   },

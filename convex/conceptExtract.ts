@@ -1,14 +1,13 @@
 /**
  * Read one session (or source) for concepts, against the course's known ones.
- * Haiku, per the spec's "linking might run on Haiku" (to be compared with
- * Sonnet on the PSYC 100 backfill).
+ * Sonnet (Nae, Nov 5): merging the same idea across wordings is the hard part.
  */
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
 import { internalAction } from './_generated/server';
 import { buildConceptPrompt, parseConcepts } from './conceptText';
-import { AI_MODEL, callClaude } from './config';
+import { AI_MODEL_SONNET, callClaude } from './config';
 
 export const read = internalAction({
   args: { sessionId: v.id('sessions'), queuedAt: v.number() },
@@ -21,8 +20,9 @@ export const read = internalAction({
         return;
       }
       const reply = await callClaude({
-        model: AI_MODEL,
-        maxTokens: 8000,
+        model: AI_MODEL_SONNET,
+        // Room for Sonnet's thinking plus a long concept list.
+        maxTokens: 16000,
         messages: [{ role: 'user', content: buildConceptPrompt(input) }],
         onUsage: (usage) =>
           console.log(`[concepts] in=${usage.input_tokens} out=${usage.output_tokens}`),

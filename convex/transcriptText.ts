@@ -24,7 +24,7 @@ Words:
 - A word you cannot read with confidence: write [?] instead, one [?] per unreadable word. Never guess, even when the context suggests a word.
 
 Structure (keep the page's shape, using only these marks):
-- One output line per written line. Show indentation with two spaces per level the student used. Keep bullets, dashes and numbering as written.
+- One output line per item: a bullet, a numbered point, a heading, a sentence or a margin note. When the student's writing wraps onto the next line of paper to finish the same item, join it into that one output line (with a space). Start a new output line only where the student started a new item. Show indentation with two spaces per level the student used. Keep bullets, dashes and numbering as written.
 - Reading order: follow the page the way the student would read it. If the page is split into columns or separate areas, finish one before starting the next: start each column with its own line [column 1], [column 2] and so on, left to right.
 - Titles and headings: a line the student set apart as a title or heading (bigger, underlined, boxed, circled, starred, or standing alone above a section) starts with "# " for the page title or "## " for a section heading. Don't mark ordinary lines.
 - Boxed or circled blocks of text: one line [box], then the boxed lines indented two spaces under it.
