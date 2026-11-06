@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { friendlyError } from '@/lib/errors';
+import { cn } from '@/lib/utils';
 import { useMutation, useQuery } from 'convex/react';
 import { AlertCircle, ExternalLink, Loader2, RotateCcw } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -11,9 +13,25 @@ import type { Id } from '../../../convex/_generated/dataModel';
  * A source's text page by page, exactly as the PDF has it (the document's own
  * words, never a summary), with a link to the PDF itself.
  */
-export function SourcePages({ sessionId }: { sessionId: Id<'sessions'> }) {
+export function SourcePages({
+  sessionId,
+  openPage,
+}: {
+  sessionId: Id<'sessions'>;
+  /** Scroll to this PDF page (1-based) once loaded, e.g. from a thread. */
+  openPage?: number;
+}) {
   const source = useQuery(api.sources.get, { sessionId });
   const retry = useMutation(api.sources.retry);
+  const scrolled = useRef(false);
+  const loaded = !!source && source.pages.length > 0;
+  useEffect(() => {
+    if (scrolled.current || openPage === undefined || !loaded) return;
+    scrolled.current = true;
+    document
+      .getElementById(`source-p-${openPage}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [openPage, loaded]);
 
   if (source === undefined) {
     return <Loader2 className="m-4 h-4 w-4 animate-spin text-muted-foreground" />;
@@ -85,7 +103,14 @@ export function SourcePages({ sessionId }: { sessionId: Id<'sessions'> }) {
         {source.pages
           .filter((p) => p.text)
           .map((p) => (
-            <section key={p.page} className="flex flex-col gap-1">
+            <section
+              key={p.page}
+              id={`source-p-${p.page}`}
+              className={cn(
+                'flex scroll-mt-2 flex-col gap-1 rounded-lg',
+                p.page === openPage && 'bg-primary/10 p-2 ring-1 ring-primary/40',
+              )}
+            >
               <h3 className="text-xs font-semibold text-muted-foreground">p. {p.page}</h3>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                 {p.text}

@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.16.0',
+    date: '2026-11-05',
+    title: 'Threads: see ideas run through your course',
+    changes: [
+      {
+        kind: 'added',
+        text: 'A new Threads screen. Pick a course to see the concepts in your notes and readings, with how many sessions each one shows up in.',
+      },
+      {
+        kind: 'added',
+        text: 'Open a concept to see it as a timeline, session by session, with your own lines and a link straight to the page.',
+      },
+      {
+        kind: 'added',
+        text: 'The same idea written different ways (like “neg. reinforcement” and “negative reinforcement”) joins one thread. If Nugget lumps two things together, split them; if a concept is wrong, dismiss it.',
+      },
+      {
+        kind: 'added',
+        text: 'New pages and readings are read for concepts on their own. Sessions from before today have a Find concepts button.',
+      },
+    ],
+  },
+  {
     version: '0.15.1',
     label: '0.15.0 – 0.15.1',
     date: '2026-11-05',

@@ -42,6 +42,13 @@ export default defineSchema({
     // The source's PDF in R2 and its original file name.
     sourceFile: v.optional(v.object({ storageKey: v.string(), name: v.string() })),
     sourceStatus: v.optional(v.union(v.literal('pending'), v.literal('done'), v.literal('failed'))),
+    // Concept reading (convex/concepts.ts). Absent = never read. conceptsQueuedAt
+    // identifies the latest queued read, so an older read that finishes late is
+    // ignored.
+    conceptsStatus: v.optional(
+      v.union(v.literal('pending'), v.literal('done'), v.literal('failed')),
+    ),
+    conceptsQueuedAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_user_deleted', ['userId', 'isDeleted'])
@@ -80,6 +87,41 @@ export default defineSchema({
     page: v.number(),
     text: v.string(),
   }).index('by_session_page', ['sessionId', 'page']),
+
+  // Concepts in a course (terms, people, theories…), found by Claude across its
+  // sessions and sources. A separate layer: never written into the notes.
+  concepts: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    name: v.string(),
+    // Other wordings the notes use for the same concept (merged automatically).
+    aliases: v.array(v.string()),
+    kind: v.optional(v.string()),
+    // Dismissed by the student: hidden, and kept so it isn't found again.
+    dismissed: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_course', ['courseId']),
+
+  // One line that mentions a concept: a transcript line of a class page, or a
+  // line of a source's PDF page.
+  conceptMentions: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    conceptId: v.id('concepts'),
+    sessionId: v.id('sessions'),
+    // Class session: the page and 0-based transcript line.
+    pageId: v.optional(v.id('pages')),
+    // Source: the 1-based PDF page.
+    sourcePage: v.optional(v.number()),
+    line: v.number(),
+    // The line's text when it was read (a page's live line wins when shown).
+    quote: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_concept', ['conceptId'])
+    .index('by_session', ['sessionId'])
+    .index('by_course', ['courseId']),
 
   // Session notes (separated from sessions to avoid 1MB document limit)
   sessionNotes: defineTable({

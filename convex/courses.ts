@@ -66,6 +66,12 @@ export const remove = mutation({
         message: `${course.name} still has sessions (check the trash too). Move or delete them first.`,
       });
     }
+    // Only dismissed concepts can be left once its sessions are gone.
+    const concepts = await ctx.db
+      .query('concepts')
+      .withIndex('by_course', (q) => q.eq('courseId', id))
+      .collect();
+    for (const concept of concepts) await ctx.db.delete(concept._id);
     await ctx.db.delete(id);
   },
 });

@@ -211,7 +211,12 @@ export function StudyView() {
         {selectedRecording ? (
           <>
             <div className="flex-1 overflow-auto p-5">
-              <StudyContent recording={selectedRecording} sidebarCollapsed={!sidebarOpen} />
+              <StudyContent
+                key={selectedRecording.id}
+                recording={selectedRecording}
+                sidebarCollapsed={!sidebarOpen}
+                openPage={sessionMatch?.search.page}
+              />
             </div>
             <div className="border-t border-[var(--glass-border)]">
               <StudyTools sessionId={selectedRecording.id as Id<'sessions'>} />

@@ -249,7 +249,7 @@ function ReadAgainButton({ pageId, fixes }: { pageId: Id<'pages'>; fixes: number
  * layout marks ([column 2], [box], [diagram: …]) and margin notes. Indentation
  * is kept as the student wrote it.
  */
-function TranscriptLineView({ text }: { text: string }) {
+export function TranscriptLineView({ text }: { text: string }) {
   const { kind, indent, body } = parseLine(text);
   const pad = indent > 0 ? { paddingLeft: `${indent}ch` } : undefined;
   if (kind === 'layout') {

@@ -6,6 +6,7 @@ import { MessagesView } from '@/components/messages/messages-view';
 import { StudyRoomsView } from '@/components/rooms/study-rooms-view';
 import { SharedSessionView } from '@/components/shared-session-view';
 import { StudyView } from '@/components/study-view';
+import { ThreadsView } from '@/components/threads-view';
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 
 const rootRoute = createRootRoute({
@@ -28,6 +29,23 @@ const studySessionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/study/$sessionId',
   component: StudyView,
+  // ?page= opens a page from a thread: a class page's 0-based index, or a
+  // source's 1-based PDF page.
+  validateSearch: (search: Record<string, unknown>): { page?: number } => ({
+    page: typeof search.page === 'number' ? search.page : undefined,
+  }),
+});
+
+const threadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/threads',
+  component: ThreadsView,
+});
+
+const courseThreadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/threads/$courseId',
+  component: ThreadsView,
 });
 
 const friendsRoute = createRoute({
@@ -82,6 +100,8 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   studyIndexRoute,
   studySessionRoute,
+  threadsRoute,
+  courseThreadsRoute,
   friendsRoute,
   messagesRoute,
   conversationRoute,

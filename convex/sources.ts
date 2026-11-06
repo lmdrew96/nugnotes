@@ -17,6 +17,7 @@ import {
   query,
 } from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { queueConcepts } from './concepts';
 import { isDateKey } from './dateKey';
 import { r2 } from './r2';
 
@@ -152,6 +153,7 @@ export const savePages = internalMutation({
       });
     }
     await ctx.db.patch(sessionId, { sourceStatus: 'done', updatedAt: Date.now() });
+    await queueConcepts(ctx, sessionId);
   },
 });
 

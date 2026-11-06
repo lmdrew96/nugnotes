@@ -36,9 +36,16 @@ interface StudyContentProps {
    * become read-only — those write to the session, and only its owner may.
    */
   readOnly?: boolean;
+  /** Open this page on arrival (from a thread): class page index, or source PDF page. */
+  openPage?: number;
 }
 
-export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: StudyContentProps) {
+export function StudyContent({
+  recording,
+  sidebarCollapsed,
+  readOnly = false,
+  openPage,
+}: StudyContentProps) {
   const isMobile = useIsMobile();
 
   // Inline editing state
@@ -370,13 +377,13 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
 
         {showSource && (
           <TabsContent value="source" className="h-[calc(100%-2rem)] mt-0">
-            <SourcePages sessionId={recording.id as Id<'sessions'>} />
+            <SourcePages sessionId={recording.id as Id<'sessions'>} openPage={openPage} />
           </TabsContent>
         )}
 
         {showPages && (
           <TabsContent value="pages" className="h-[calc(100%-2rem)] mt-0">
-            <SessionPages sessionId={recording.id as Id<'sessions'>} />
+            <SessionPages sessionId={recording.id as Id<'sessions'>} openPage={openPage} />
           </TabsContent>
         )}
 

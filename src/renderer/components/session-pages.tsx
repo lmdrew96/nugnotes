@@ -14,7 +14,7 @@ import {
   ScanText,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -22,10 +22,12 @@ import type { PageWithUrl } from '../../../convex/pages';
 
 interface SessionPagesProps {
   sessionId: Id<'sessions'>;
+  /** Open this page (0-based) once the pages load, e.g. from a thread. */
+  openPage?: number;
 }
 
 /** A session's photographed pages, in order. Tap a page to enlarge, move, retake or delete it. */
-export function SessionPages({ sessionId }: SessionPagesProps) {
+export function SessionPages({ sessionId, openPage: linkedPage }: SessionPagesProps) {
   const pages = useQuery(api.pages.list, { sessionId });
   const readPages = useMutation(api.pages.readPages);
   const ensureSession = useCallback(() => Promise.resolve(sessionId), [sessionId]);
@@ -33,6 +35,13 @@ export function SessionPages({ sessionId }: SessionPagesProps) {
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Open the linked page once, when the pages first arrive.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || linkedPage === undefined || !pages) return;
+    opened.current = true;
+    if (linkedPage >= 0 && linkedPage < pages.length) setOpenIndex(linkedPage);
+  }, [linkedPage, pages]);
 
   const onPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(event.target.files ?? []);

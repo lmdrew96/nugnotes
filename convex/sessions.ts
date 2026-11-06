@@ -8,6 +8,7 @@ import {
   query,
 } from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { deleteSessionConcepts, queueConcepts } from './concepts';
 import { formatDateKey, isDateKey } from './dateKey';
 import { deleteAllPages } from './pages';
 import { deleteSourceData, loadSourcePages, sourcePagesToText } from './sources';
@@ -228,10 +229,16 @@ export const update = mutation({
       Object.entries(otherUpdates).filter(([_, value]) => value !== undefined),
     );
 
-    return await ctx.db.patch(id, {
+    await ctx.db.patch(id, {
       ...filteredUpdates,
       updatedAt: Date.now(),
     });
+
+    // Concepts belong to a course: moving a session re-reads it in its new one.
+    if (args.courseId && args.courseId !== session.courseId) {
+      await deleteSessionConcepts(ctx, id);
+      await queueConcepts(ctx, id);
+    }
   },
 });
 
@@ -308,6 +315,7 @@ export const permanentDelete = mutation({
     await deleteRoomData(ctx, sessionDocKey(args.id));
     await deleteAllPages(ctx, args.id);
     await deleteSourceData(ctx, session);
+    await deleteSessionConcepts(ctx, args.id);
 
     return await ctx.db.delete(args.id);
   },
@@ -366,6 +374,7 @@ export const cleanupOldDeleted = internalMutation({
         await deleteRoomData(ctx, sessionDocKey(session._id));
         await deleteAllPages(ctx, session._id);
         await deleteSourceData(ctx, session);
+        await deleteSessionConcepts(ctx, session._id);
 
         await ctx.db.delete(session._id);
         deletedCount++;

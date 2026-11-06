@@ -8,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useUnreadCount } from '@/hooks/use-messaging';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BookOpen, Cat, Home, Menu, MessageSquare, Settings, Users } from 'lucide-react';
+import { BookOpen, Cat, Home, Menu, MessageSquare, Settings, Users, Waypoints } from 'lucide-react';
 import { useState } from 'react';
 
 interface NavItem {
@@ -32,6 +32,7 @@ export function TopBar() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const isHome = currentPath === '/';
   const isStudy = currentPath.startsWith('/study');
+  const isThreads = currentPath.startsWith('/threads');
   const isFriends = currentPath === '/friends';
   const isMessages = currentPath.startsWith('/messages');
 
@@ -40,6 +41,12 @@ export function TopBar() {
   const navItems: NavItem[] = [
     { to: '/', icon: <Home className="h-4 w-4" />, label: 'Home', isActive: isHome },
     { to: '/study', icon: <BookOpen className="h-4 w-4" />, label: 'Study', isActive: isStudy },
+    {
+      to: '/threads',
+      icon: <Waypoints className="h-4 w-4" />,
+      label: 'Threads',
+      isActive: isThreads,
+    },
     {
       to: '/friends',
       icon: <Users className="h-4 w-4" />,

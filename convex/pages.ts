@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { type MutationCtx, type QueryCtx, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { queueConcepts } from './concepts';
 import { r2 } from './r2';
 import { queueTranscription } from './transcribe';
 import type { TranscriptLine } from './transcriptText';
@@ -176,6 +177,8 @@ export const remove = mutation({
     await r2.deleteObject(ctx, page.storageKey);
     await renumber(ctx, page.sessionId);
     await ctx.db.patch(page.sessionId, { updatedAt: Date.now() });
+    // Re-read so the removed page's lines leave its concepts' threads.
+    await queueConcepts(ctx, page.sessionId);
   },
 });
 
