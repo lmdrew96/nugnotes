@@ -76,12 +76,14 @@ Photograph your handwritten class notes. NugNotes transcribes them, ties session
 - **Study rooms with classmates: parked.** Hide them from the UI; keep the code for now rather than deleting it.
 - **Test course: PSYC 100.** Backfill this semester's PSYC 100 pages as the first real run.
 - **"Ghosts" are called whiskers** in NugNotes.
+- **Transcripts: one line per item** (Nov 5): a bullet that wraps on paper stays one line; structure marks keep headings, columns, boxes, diagrams and margin notes.
+- **Sonnet for connections** (Nov 5): concepts, whiskers/contradictions and the course quiz use Sonnet.
 
 ## Build on the existing repo
 NugNotes is already at **v0.9.0** (Oct 5): study buddy picker, Swirl theme and animated backgrounds, branding, plus the BlockNote editor and study rooms (now being removed / parked). Build the paper layer **into this repo**, don't start over.
 - Stack stays: Vite + React + Convex on Cloudflare (wrangler.jsonc), R2 for photos and PDFs.
 - Borrow Ghostlight's **pattern and prompts** (extract → link → gaps → contradictions, each backed by a quote), not its code. Ghostlight is Next.js + Neon, so the code doesn't transfer.
-- Models: Haiku 5.5 / Sonnet 5.5 via the constants in `convex/config.ts`. Vision transcription likely needs Sonnet; linking might run on Haiku. Test both.
+- Models: Haiku 5.5 / Sonnet 5.5 via the constants in `convex/config.ts`. Transcription, concepts, whiskers/contradictions and the course quiz all run on Sonnet (Nae, Nov 5, 2026); Haiku stays on the older per-session study tools and chat.
 
 ## Patches (ChaosPatch `nugnotes`, tag `paper-v2`, in order)
 1. Clean-out: remove the BlockNote typed-notes editor; hide study rooms (park, don't delete)
