@@ -35,6 +35,13 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
     documentText: v.optional(v.string()),
     documentStorageIds: v.optional(v.array(v.string())),
+    // 'source' = an uploaded PDF (slides, a reading) dated inside a course, read
+    // page by page into sourcePages (convex/sources.ts). Absent = a class
+    // session of photographed pages, or an older session.
+    kind: v.optional(v.literal('source')),
+    // The source's PDF in R2 and its original file name.
+    sourceFile: v.optional(v.object({ storageKey: v.string(), name: v.string() })),
+    sourceStatus: v.optional(v.union(v.literal('pending'), v.literal('done'), v.literal('failed'))),
   })
     .index('by_user', ['userId'])
     .index('by_user_deleted', ['userId', 'isDeleted'])
@@ -65,6 +72,14 @@ export default defineSchema({
       v.array(v.object({ text: v.string(), original: v.optional(v.string()) })),
     ),
   }).index('by_session_order', ['sessionId', 'order']),
+
+  // A source's text, one row per PDF page (1-based), quoted as-is, never summarized.
+  sourcePages: defineTable({
+    userId: v.string(),
+    sessionId: v.id('sessions'),
+    page: v.number(),
+    text: v.string(),
+  }).index('by_session_page', ['sessionId', 'page']),
 
   // Session notes (separated from sessions to avoid 1MB document limit)
   sessionNotes: defineTable({

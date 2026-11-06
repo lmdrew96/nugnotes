@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   ArrowUpAZ,
   ArrowUpDown,
+  BookMarked,
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -97,7 +98,11 @@ function SessionItem({
         } ${viewingTrash ? 'opacity-60' : ''}`}
       >
         <div className="mb-1 flex items-center gap-1.5 pr-6">
-          <FileText className="h-3 w-3 text-primary shrink-0" />
+          {recording.kind === 'source' ? (
+            <BookMarked className="h-3 w-3 text-accent shrink-0" />
+          ) : (
+            <FileText className="h-3 w-3 text-primary shrink-0" />
+          )}
           <span className="line-clamp-1 text-xs font-medium text-sidebar-foreground">
             {recording.title}
           </span>
@@ -107,6 +112,11 @@ function SessionItem({
             <Calendar className="h-2.5 w-2.5" />
             {recording.date}
           </span>
+          {recording.kind === 'source' && (
+            <span className="rounded-full bg-accent/20 px-1.5 font-medium text-foreground">
+              Source
+            </span>
+          )}
         </div>
       </button>
 

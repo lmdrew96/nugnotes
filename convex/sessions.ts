@@ -10,6 +10,7 @@ import {
 import { requireAuth } from './authHelpers';
 import { formatDateKey, isDateKey } from './dateKey';
 import { deleteAllPages } from './pages';
+import { deleteSourceData, loadSourcePages, sourcePagesToText } from './sources';
 import { pagesToText } from './transcriptText';
 import { deleteRoomData } from './ydoc';
 import { sessionDocKey } from './ydocKeys';
@@ -51,6 +52,7 @@ const toListItem = (s: Doc<'sessions'>, names: Map<Id<'courses'>, string>) => ({
   course: (s.courseId && names.get(s.courseId)) || s.course,
   courseId: s.courseId,
   classDate: s.classDate,
+  kind: s.kind,
 });
 
 // List all sessions for the authenticated user (excluding deleted)
@@ -107,9 +109,13 @@ export const get = query({
       .withIndex('by_session_order', (q) => q.eq('sessionId', args.id))
       .collect();
 
+    const sourcePages = session.kind === 'source' ? await loadSourcePages(ctx, args.id) : [];
+
     return {
       ...session,
       courseName: course?.name ?? session.course,
+      // A source's text, page-tagged, for the AI tools (empty for class sessions).
+      sourceText: sourcePagesToText(sourcePages),
       // The pages' transcripts, for the AI tools (empty until pages are read).
       pagesText: pagesToText(pages),
       notesPlainText: notesDoc?.plainText,
@@ -301,6 +307,7 @@ export const permanentDelete = mutation({
     }
     await deleteRoomData(ctx, sessionDocKey(args.id));
     await deleteAllPages(ctx, args.id);
+    await deleteSourceData(ctx, session);
 
     return await ctx.db.delete(args.id);
   },
@@ -358,6 +365,7 @@ export const cleanupOldDeleted = internalMutation({
         }
         await deleteRoomData(ctx, sessionDocKey(session._id));
         await deleteAllPages(ctx, session._id);
+        await deleteSourceData(ctx, session);
 
         await ctx.db.delete(session._id);
         deletedCount++;

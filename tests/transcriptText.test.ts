@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMaterial, hasEnoughMaterial } from '../convex/studyMaterial';
+import { buildMaterial, hasEnoughMaterial, sessionMaterial } from '../convex/studyMaterial';
 import { NO_NOTES, pagesToText, parseLine, toTranscriptLines } from '../convex/transcriptText';
 
 describe('toTranscriptLines', () => {
@@ -86,5 +86,25 @@ describe('buildMaterial with pages', () => {
 
   it('leaves typed-notes-only material exactly as before', () => {
     expect(buildMaterial({ notes: 'typed' })).toBe("STUDENT'S NOTES:\ntyped");
+  });
+});
+
+describe('sessionMaterial', () => {
+  it("adds a source's page-tagged text to the document text", () => {
+    const material = sessionMaterial({
+      documentText: 'uploaded handout',
+      sourceText: '[p. 1]\nMorpheme: smallest unit of meaning',
+    });
+    expect(material.documentText).toBe(
+      'uploaded handout\n\n[p. 1]\nMorpheme: smallest unit of meaning',
+    );
+  });
+
+  it('leaves class sessions as they were', () => {
+    expect(sessionMaterial({ pagesText: '[Page 1]\nnotes', sourceText: '' })).toEqual({
+      pages: '[Page 1]\nnotes',
+      notes: undefined,
+      documentText: undefined,
+    });
   });
 });

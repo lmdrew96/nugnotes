@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.15.0',
+    date: '2026-11-05',
+    title: 'Bring your slides and readings',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Add slides or a reading as a PDF from the Capture screen. It lands in the course on the day you pick, marked Source, next to your class sessions.',
+      },
+      {
+        kind: 'added',
+        text: 'Open a source to read its text page by page, exactly as the PDF has it, with a link to the PDF itself.',
+      },
+      {
+        kind: 'improved',
+        text: 'Study tools and chat can work from a source’s text too.',
+      },
+    ],
+  },
+  {
     version: '0.14.1',
     label: '0.14.0 – 0.14.1',
     date: '2026-11-05',

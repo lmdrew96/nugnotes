@@ -1,4 +1,5 @@
 import { SessionPages } from '@/components/session-pages';
+import { SourcePages } from '@/components/source-pages';
 import { StudyNuggetNotes } from '@/components/study-nugget-notes';
 import type { Recording } from '@/components/study-view';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,17 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { friendlyError } from '@/lib/errors';
 import { renderMarkdown } from '@/lib/render-markdown';
 import { useMutation } from 'convex/react';
-import { BookOpen, Camera, Cat, Check, FileImage, FileText, Pencil, X } from 'lucide-react';
+import {
+  BookMarked,
+  BookOpen,
+  Camera,
+  Cat,
+  Check,
+  FileImage,
+  FileText,
+  Pencil,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
@@ -109,10 +120,15 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
   // Typed notes are gone (paper-first); sessions typed before that keep a
   // read-only copy.
   const hasTypedNotes = !!recording.notesMarkdown?.trim();
+  // A source (uploaded PDF) shows its text page by page instead of photos, and
+  // no Key Points: Claude doesn't summarize sources into the notes layer.
+  const isSource = recording.kind === 'source';
   // Pages are the owner's only (the server returns none to anyone else).
-  const showPages = !readOnly;
-  const defaultTab =
-    showPages && (recording.classDate || !hasTypedNotes)
+  const showPages = !readOnly && !isSource;
+  const showSource = !readOnly && isSource;
+  const defaultTab = showSource
+    ? 'source'
+    : showPages && (recording.classDate || !hasTypedNotes)
       ? 'pages'
       : hasTypedNotes
         ? 'notes'
@@ -309,6 +325,12 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
 
       <Tabs defaultValue={defaultTab} className="flex-1 min-h-0">
         <TabsList className="mb-3 h-8">
+          {showSource && (
+            <TabsTrigger value="source" className="gap-1.5 text-xs h-7 px-3">
+              <BookMarked className="h-3 w-3" />
+              Reading
+            </TabsTrigger>
+          )}
           {showPages && (
             <TabsTrigger value="pages" className="gap-1.5 text-xs h-7 px-3">
               <Camera className="h-3 w-3" />
@@ -327,7 +349,7 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
               Extracted Text
             </TabsTrigger>
           )}
-          {(hasNuggetNotes || !readOnly || defaultTab === 'nugget-notes') && (
+          {!isSource && (hasNuggetNotes || !readOnly || defaultTab === 'nugget-notes') && (
             <TabsTrigger value="nugget-notes" className="gap-1.5 text-xs h-7 px-3">
               <Cat className="h-3 w-3" />
               Key Points
@@ -343,6 +365,12 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
                 {renderMarkdown(recording.documentText ?? '')}
               </div>
             </ScrollArea>
+          </TabsContent>
+        )}
+
+        {showSource && (
+          <TabsContent value="source" className="h-[calc(100%-2rem)] mt-0">
+            <SourcePages sessionId={recording.id as Id<'sessions'>} />
           </TabsContent>
         )}
 
@@ -362,12 +390,14 @@ export function StudyContent({ recording, sidebarCollapsed, readOnly = false }: 
           </TabsContent>
         )}
 
-        <TabsContent value="nugget-notes" className="h-[calc(100%-2rem)] mt-0">
-          <StudyNuggetNotes
-            notes={recording.nuggetNotes}
-            sessionId={readOnly ? undefined : (recording.id as Id<'sessions'>)}
-          />
-        </TabsContent>
+        {!isSource && (
+          <TabsContent value="nugget-notes" className="h-[calc(100%-2rem)] mt-0">
+            <StudyNuggetNotes
+              notes={recording.nuggetNotes}
+              sessionId={readOnly ? undefined : (recording.id as Id<'sessions'>)}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

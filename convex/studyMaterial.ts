@@ -17,6 +17,30 @@ export interface StudyMaterial {
   documentText?: string | null;
 }
 
+/** What sessions.get returns that the AI tools read from. */
+interface SessionWithMaterial {
+  pagesText?: string;
+  notesPlainText?: string;
+  documentText?: string;
+  sourceText?: string;
+}
+
+/**
+ * A session's material: page transcripts, older typed notes, and document text
+ * (uploaded documents plus, for a source, its PDF's page-tagged text).
+ */
+export function sessionMaterial(session: SessionWithMaterial): StudyMaterial {
+  const documents = [session.documentText, session.sourceText]
+    .map((text) => text?.trim())
+    .filter(Boolean)
+    .join('\n\n');
+  return {
+    pages: session.pagesText,
+    notes: session.notesPlainText,
+    documentText: documents || undefined,
+  };
+}
+
 /** Below this much text there's nothing worth generating from. */
 export const MIN_MATERIAL_CHARS = 80;
 

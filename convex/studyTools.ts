@@ -7,7 +7,7 @@ import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { type ActionCtx, action, internalMutation, mutation, query } from './_generated/server';
 import { callClaude as callClaudeShared } from './config';
-import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
+import { buildMaterial, requireEnoughMaterial, sessionMaterial } from './studyMaterial';
 import {
   getConceptMapPrompt,
   getEli5Prompt,
@@ -34,11 +34,7 @@ async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
   await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
   const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
   if (!session) throw new Error('Session not found');
-  const material = {
-    pages: session.pagesText,
-    notes: session.notesPlainText,
-    documentText: session.documentText,
-  };
+  const material = sessionMaterial(session);
   requireEnoughMaterial(material);
   return { session, lecture: buildMaterial(material) };
 }

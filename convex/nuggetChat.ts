@@ -12,6 +12,7 @@ import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
 import { enforceLimit, requireUserId } from './rateLimits';
+import { sessionMaterial } from './studyMaterial';
 import { TRANSCRIPT_MARKS } from './transcriptText';
 
 /** Most document text a chat carries — a stack of PDFs mustn't make every turn huge. */
@@ -142,7 +143,10 @@ export const send = action({
 
     const system = buildChatSystemPrompt({
       pages: args.includeNotes ? session?.pagesText || undefined : undefined,
-      documentText: args.includeDocuments ? session?.documentText : undefined,
+      documentText:
+        args.includeDocuments && session
+          ? (sessionMaterial(session).documentText ?? undefined)
+          : undefined,
       notes: args.includeNotes ? session?.notesPlainText : undefined,
       nuggetNotes: args.includeNotes ? keyPoints || undefined : undefined,
       lectureType: session?.lectureType,

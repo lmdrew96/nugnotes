@@ -10,7 +10,7 @@ import { action } from './_generated/server';
 import { callClaude } from './config';
 import { type LectureType, getKeyPointsPrompt, parseKeyPoints } from './prompts';
 import { enforceLimit, requireUserId } from './rateLimits';
-import { buildMaterial, requireEnoughMaterial } from './studyMaterial';
+import { buildMaterial, requireEnoughMaterial, sessionMaterial } from './studyMaterial';
 
 export const generateKeyPoints = action({
   args: { sessionId: v.id('sessions') },
@@ -19,11 +19,7 @@ export const generateKeyPoints = action({
     // Runs as the caller: a session that isn't theirs comes back null.
     const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
     if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });
-    const material = {
-      pages: session.pagesText,
-      notes: session.notesPlainText,
-      documentText: session.documentText,
-    };
+    const material = sessionMaterial(session);
     requireEnoughMaterial(material);
 
     const reply = await callClaude({

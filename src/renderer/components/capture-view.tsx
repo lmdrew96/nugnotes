@@ -1,3 +1,4 @@
+import { SourceUploadButton } from '@/components/source-upload-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCourses } from '@/hooks/use-courses';
@@ -201,6 +202,7 @@ export function CaptureView() {
           <Images className="h-4 w-4" />
           Add from photos
         </Button>
+        {!started && <SourceUploadButton courseId={courseId} classDate={classDate} />}
         {!courseId && courses !== undefined && (
           <p className="text-center text-xs text-muted-foreground">Pick a course first.</p>
         )}

@@ -39,6 +39,8 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as reportBug from "../reportBug.js";
 import type * as sessionSharing from "../sessionSharing.js";
 import type * as sessions from "../sessions.js";
+import type * as sourceExtract from "../sourceExtract.js";
+import type * as sources from "../sources.js";
 import type * as studyGames from "../studyGames.js";
 import type * as studyMaterial from "../studyMaterial.js";
 import type * as studyRooms from "../studyRooms.js";
@@ -90,6 +92,8 @@ declare const fullApi: ApiFromModules<{
   reportBug: typeof reportBug;
   sessionSharing: typeof sessionSharing;
   sessions: typeof sessions;
+  sourceExtract: typeof sourceExtract;
+  sources: typeof sources;
   studyGames: typeof studyGames;
   studyMaterial: typeof studyMaterial;
   studyRooms: typeof studyRooms;

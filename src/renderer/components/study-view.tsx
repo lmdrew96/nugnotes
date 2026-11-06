@@ -25,6 +25,8 @@ export interface SessionSummary {
   sortAt: number;
   lectureType?: string;
   course?: string;
+  /** 'source' for an uploaded PDF (slides, a reading). */
+  kind?: 'source';
 }
 
 /** A session as the study view renders it. */
@@ -41,6 +43,8 @@ export interface Recording {
   classDate?: string;
   nuggetNotes?: { text: string }[];
   documentText?: string;
+  /** 'source' for an uploaded PDF (slides, a reading). */
+  kind?: 'source';
 }
 
 const formatDate = (timestamp: number) =>
@@ -58,6 +62,7 @@ const toSummary = (session: {
   classDate?: string;
   lectureType?: string;
   course?: string;
+  kind?: 'source';
 }): SessionSummary => ({
   id: session._id,
   title: session.title,
@@ -66,6 +71,7 @@ const toSummary = (session: {
   sortAt: session.classDate ? dateKeyToTime(session.classDate) : session.createdAt,
   lectureType: session.lectureType,
   course: session.course,
+  kind: session.kind,
 });
 
 export function StudyView() {
@@ -148,6 +154,7 @@ export function StudyView() {
         classDate: fullSession.classDate,
         nuggetNotes: fullSession.nuggetNotes,
         documentText: fullSession.documentText,
+        kind: fullSession.kind,
       }
     : null;
 

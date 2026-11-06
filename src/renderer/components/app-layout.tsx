@@ -24,7 +24,7 @@ export function AppLayout() {
       </main>
       <NuggetChat
         sessionId={activeSessionId ?? undefined}
-        hasDocuments={!!session?.documentText}
+        hasDocuments={!!(session?.documentText || session?.sourceText)}
         isOpen={chatOpen}
         onOpenChange={setChatOpen}
       />
