@@ -33,6 +33,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.13.1',
+    date: '2026-11-05',
+    title: 'Your sessions stay yours',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Only you can move your sessions to the trash or bring them back.',
+      },
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-11-04',
     title: 'Nugget reads your pages',

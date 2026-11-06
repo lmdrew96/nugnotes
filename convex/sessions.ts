@@ -257,7 +257,9 @@ export const appendDocument = mutation({
 export const softDelete = mutation({
   args: { id: v.id('sessions') },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
+    const session = await ctx.db.get(args.id);
+    if (!session || session.userId !== userId) throw new Error('Session not found');
     return await ctx.db.patch(args.id, {
       isDeleted: true,
       deletedAt: Date.now(),
@@ -270,7 +272,9 @@ export const softDelete = mutation({
 export const restore = mutation({
   args: { id: v.id('sessions') },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const userId = await requireAuth(ctx);
+    const session = await ctx.db.get(args.id);
+    if (!session || session.userId !== userId) throw new Error('Session not found');
     return await ctx.db.patch(args.id, {
       isDeleted: false,
       deletedAt: undefined,
