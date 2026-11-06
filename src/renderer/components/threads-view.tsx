@@ -1,5 +1,6 @@
 import { ConceptThread } from '@/components/concept-thread';
 import { ContradictionsPanel } from '@/components/contradictions-panel';
+import { CourseQuiz } from '@/components/course-quiz';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WhiskersPanel } from '@/components/whiskers-panel';
@@ -12,6 +13,7 @@ import { useMutation, useQuery } from 'convex/react';
 import {
   ArrowLeft,
   BookOpen,
+  Brain,
   Cat,
   GitCompareArrows,
   Loader2,
@@ -82,6 +84,7 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
   const contradictions = useQuery(api.gaps.listContradictions, { courseId });
   const readCourse = useMutation(api.concepts.readCourse);
   const [tab, setTab] = useState<Tab>('concepts');
+  const [quizConcept, setQuizConcept] = useState<Id<'concepts'> | null>(null);
   const [selected, setSelected] = useState<Id<'concepts'> | null>(null);
   const [filter, setFilter] = useState('');
   const [showDismissed, setShowDismissed] = useState(false);
@@ -120,6 +123,7 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
       icon: <GitCompareArrows className="h-3.5 w-3.5" />,
       count: openContradictions,
     },
+    { key: 'quiz', label: 'Quiz', icon: <Brain className="h-3.5 w-3.5" /> },
   ];
 
   const header = (
@@ -259,6 +263,10 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
       conceptId={selected}
       onBack={isMobile ? () => setSelected(null) : undefined}
       onGone={() => setSelected(null)}
+      onQuiz={() => {
+        setQuizConcept(selected);
+        setTab('quiz');
+      }}
     />
   ) : (
     <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -287,6 +295,17 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
         )}
       </div>
     );
+  } else if (tab === 'quiz') {
+    body = (
+      <div className="h-full overflow-hidden rounded-xl glass">
+        <CourseQuiz
+          key={quizConcept ?? 'course'}
+          courseId={courseId}
+          concepts={data.concepts}
+          conceptId={quizConcept}
+        />
+      </div>
+    );
   } else if (isMobile) {
     body = (
       <div className="h-full overflow-hidden rounded-xl glass p-2">{selected ? thread : list}</div>
@@ -308,7 +327,7 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
   );
 }
 
-type Tab = 'concepts' | 'whiskers' | 'contradictions';
+type Tab = 'concepts' | 'whiskers' | 'contradictions' | 'quiz';
 
 function ConceptRow({
   name,

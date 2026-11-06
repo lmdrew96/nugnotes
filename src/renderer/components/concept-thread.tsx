@@ -6,7 +6,7 @@ import { friendlyError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery } from 'convex/react';
-import { ArrowLeft, ArrowRight, EyeOff, Loader2, Scissors, Undo2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Brain, EyeOff, Loader2, Scissors, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
@@ -19,6 +19,8 @@ interface ConceptThreadProps {
   onBack?: () => void;
   /** The concept no longer exists (e.g. every line was split off). */
   onGone: () => void;
+  /** Start a quiz on this concept. */
+  onQuiz?: () => void;
 }
 
 /**
@@ -26,7 +28,7 @@ interface ConceptThreadProps {
  * first, with the student's own lines and a link to the page. Dismiss a wrong
  * concept, or split lines that were merged in by mistake into their own.
  */
-export function ConceptThread({ conceptId, onBack, onGone }: ConceptThreadProps) {
+export function ConceptThread({ conceptId, onBack, onGone, onQuiz }: ConceptThreadProps) {
   const navigate = useNavigate();
   const thread = useQuery(api.concepts.thread, { conceptId });
   const setDismissed = useMutation(api.concepts.setDismissed);
@@ -95,6 +97,18 @@ export function ConceptThread({ conceptId, onBack, onGone }: ConceptThreadProps)
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
+            {onQuiz && !thread.dismissed && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 px-2 text-xs"
+                onClick={onQuiz}
+                title="Quiz me on this concept"
+              >
+                <Brain className="h-3.5 w-3.5" />
+                Quiz me
+              </Button>
+            )}
             <Button
               size="sm"
               variant={splitting ? 'secondary' : 'ghost'}

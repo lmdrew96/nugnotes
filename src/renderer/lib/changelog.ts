@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.18.0',
+    date: '2026-11-05',
+    title: 'Get quizzed on a whole course',
+    changes: [
+      {
+        kind: 'added',
+        text: 'A Quiz tab on each course in Threads: get quizzed on the whole course, one concept, or a stretch of sessions (like weeks 6 to 10).',
+      },
+      {
+        kind: 'added',
+        text: 'Every question comes from your own notes and readings, and each answer shows the lines it came from, with a link to the page.',
+      },
+      {
+        kind: 'added',
+        text: 'Whisker check-ins: Nugget asks about things your notes never filled in, and lists the ones you still need to look up.',
+      },
+      {
+        kind: 'added',
+        text: 'Your study buddy (the cat and name you picked in Settings) asks the questions. Quiz me on any concept starts a quiz on just that thread.',
+      },
+    ],
+  },
+  {
     version: '0.17.0',
     date: '2026-11-05',
     title: 'Whiskers and contradictions',
