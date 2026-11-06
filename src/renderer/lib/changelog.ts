@@ -33,7 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.15.0',
+    version: '0.15.1',
+    label: '0.15.0 – 0.15.1',
     date: '2026-11-05',
     title: 'Bring your slides and readings',
     changes: [
@@ -48,6 +49,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'improved',
         text: 'Study tools and chat can work from a source’s text too.',
+      },
+      {
+        kind: 'fixed',
+        text: 'The page viewer opens wide, so the photo and its transcript both have room.',
       },
     ],
   },

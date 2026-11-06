@@ -164,7 +164,7 @@ export function SessionPages({ sessionId }: SessionPagesProps) {
       )}
 
       <Dialog open={!!openPage} onOpenChange={(open) => !open && setOpenIndex(null)}>
-        <DialogContent className="flex max-h-[95vh] max-w-5xl flex-col gap-3 p-3">
+        <DialogContent className="flex max-h-[95vh] flex-col gap-3 p-3 sm:max-w-[min(80rem,calc(100%-2rem))]">
           {openPage && openIndex !== null && pages && (
             <PageViewer
               key={openPage._id}
