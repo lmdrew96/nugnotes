@@ -1,6 +1,16 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+/** A line in a session: a class page's transcript line, or a source PDF page's line. */
+export const lineRef = v.object({
+  sessionId: v.id('sessions'),
+  pageId: v.optional(v.id('pages')),
+  sourcePage: v.optional(v.number()),
+  line: v.number(),
+  // The line's text when it was read (a page's live line wins when shown).
+  quote: v.string(),
+});
+
 export default defineSchema({
   // A student's courses (e.g. PSYC 100). Sessions point here by courseId.
   courses: defineTable({
@@ -42,7 +52,8 @@ export default defineSchema({
     // The source's PDF in R2 and its original file name.
     sourceFile: v.optional(v.object({ storageKey: v.string(), name: v.string() })),
     sourceStatus: v.optional(v.union(v.literal('pending'), v.literal('done'), v.literal('failed'))),
-    // Concept reading (convex/concepts.ts). Absent = never read. conceptsQueuedAt
+    // Reading for concepts, then whiskers and contradictions (convex/concepts.ts,
+    // convex/gaps.ts), as one pipeline. Absent = never read. conceptsQueuedAt
     // identifies the latest queued read, so an older read that finishes late is
     // ignored.
     conceptsStatus: v.optional(
@@ -122,6 +133,54 @@ export default defineSchema({
     .index('by_concept', ['conceptId'])
     .index('by_session', ['sessionId'])
     .index('by_course', ['courseId']),
+
+  // Whiskers: what a course's notes point at but never fill in (a term never
+  // defined, "see reading" never followed up, a margin question never
+  // answered). Raised from a session's lines; Claude never fills them in.
+  whiskers: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    // The session whose lines raised it.
+    sessionId: v.id('sessions'),
+    kind: v.string(), // 'undefined' | 'follow-up' | 'question'
+    label: v.string(),
+    lines: v.array(lineRef),
+    status: v.union(v.literal('open'), v.literal('answered'), v.literal('dismissed')),
+    // Answered by a later line or a source's page (found by Claude)…
+    answerLines: v.optional(v.array(lineRef)),
+    // …or by the student's own note.
+    answerNote: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_course', ['courseId'])
+    .index('by_session', ['sessionId']),
+
+  // Two lines from different sessions/sources that disagree. Shown side by
+  // side; the student picks one or marks it for the professor. Pages are
+  // never edited.
+  contradictions: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    about: v.string(),
+    // The line in the session being read, and the other session's line.
+    a: lineRef,
+    b: lineRef,
+    aSessionId: v.id('sessions'),
+    bSessionId: v.id('sessions'),
+    status: v.union(
+      v.literal('open'),
+      v.literal('a'),
+      v.literal('b'),
+      v.literal('ask'),
+      v.literal('dismissed'),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_course', ['courseId'])
+    .index('by_a_session', ['aSessionId'])
+    .index('by_b_session', ['bSessionId']),
 
   // Session notes (separated from sessions to avoid 1MB document limit)
   sessionNotes: defineTable({

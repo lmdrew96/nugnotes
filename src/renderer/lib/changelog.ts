@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.17.0',
+    date: '2026-11-05',
+    title: 'Whiskers and contradictions',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Whiskers 🐱: the things your notes point at but never fill in, like a term you never defined, a “see reading” you never got back to, or a question in the margin. Each one shows the lines it came from.',
+      },
+      {
+        kind: 'added',
+        text: 'A whisker closes itself when a later page or a reading answers it, showing you where. You can also answer it with your own note, or dismiss it. Copy list turns the open ones into an office-hours list.',
+      },
+      {
+        kind: 'added',
+        text: 'Contradictions: when two sessions or readings disagree, both lines show side by side. Pick the right one or save it for the professor. Your pages are never changed.',
+      },
+      {
+        kind: 'added',
+        text: 'Read all again on a course’s Threads screen reads every session for concepts, whiskers and contradictions.',
+      },
+    ],
+  },
+  {
     version: '0.16.1',
     label: '0.16.0 – 0.16.1',
     date: '2026-11-05',

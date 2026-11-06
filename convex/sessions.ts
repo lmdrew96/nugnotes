@@ -10,6 +10,7 @@ import {
 import { requireAuth } from './authHelpers';
 import { deleteSessionConcepts, queueConcepts } from './concepts';
 import { formatDateKey, isDateKey } from './dateKey';
+import { deleteSessionGaps } from './gaps';
 import { deleteAllPages } from './pages';
 import { deleteSourceData, loadSourcePages, sourcePagesToText } from './sources';
 import { pagesToText } from './transcriptText';
@@ -237,6 +238,7 @@ export const update = mutation({
     // Concepts belong to a course: moving a session re-reads it in its new one.
     if (args.courseId && args.courseId !== session.courseId) {
       await deleteSessionConcepts(ctx, id);
+      await deleteSessionGaps(ctx, session);
       await queueConcepts(ctx, id);
     }
   },
@@ -316,6 +318,7 @@ export const permanentDelete = mutation({
     await deleteAllPages(ctx, args.id);
     await deleteSourceData(ctx, session);
     await deleteSessionConcepts(ctx, args.id);
+    await deleteSessionGaps(ctx, session);
 
     return await ctx.db.delete(args.id);
   },
@@ -375,6 +378,7 @@ export const cleanupOldDeleted = internalMutation({
         await deleteAllPages(ctx, session._id);
         await deleteSourceData(ctx, session);
         await deleteSessionConcepts(ctx, session._id);
+        await deleteSessionGaps(ctx, session);
 
         await ctx.db.delete(session._id);
         deletedCount++;

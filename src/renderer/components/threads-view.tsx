@@ -1,13 +1,25 @@
 import { ConceptThread } from '@/components/concept-thread';
+import { ContradictionsPanel } from '@/components/contradictions-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { WhiskersPanel } from '@/components/whiskers-panel';
 import { useCourses } from '@/hooks/use-courses';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { friendlyError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useMatch, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery } from 'convex/react';
-import { ArrowLeft, BookOpen, Loader2, Search, Sparkles, Waypoints } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Cat,
+  GitCompareArrows,
+  Loader2,
+  RotateCcw,
+  Search,
+  Sparkles,
+  Waypoints,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
@@ -66,7 +78,10 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const data = useQuery(api.concepts.listForCourse, { courseId });
+  const whiskers = useQuery(api.gaps.listWhiskers, { courseId });
+  const contradictions = useQuery(api.gaps.listContradictions, { courseId });
   const readCourse = useMutation(api.concepts.readCourse);
+  const [tab, setTab] = useState<Tab>('concepts');
   const [selected, setSelected] = useState<Id<'concepts'> | null>(null);
   const [filter, setFilter] = useState('');
   const [showDismissed, setShowDismissed] = useState(false);
@@ -84,14 +99,32 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
   const live = data.concepts.filter((c) => !c.dismissed && matches(c));
   const dismissed = data.concepts.filter((c) => c.dismissed && matches(c));
 
-  const findConcepts = () =>
-    void readCourse({ courseId }).catch((error: unknown) =>
+  const read = (all: boolean) =>
+    void readCourse({ courseId, all }).catch((error: unknown) =>
       toast.error(friendlyError(error, 'Couldn’t start reading. Try again.')),
     );
 
-  const list = (
-    <div className="flex h-full flex-col gap-2 overflow-hidden">
-      <div className="flex items-center gap-2 px-1">
+  const openWhiskers = whiskers?.filter((w) => w.status === 'open').length ?? 0;
+  const openContradictions = contradictions?.filter((c) => c.status === 'open').length ?? 0;
+  const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { key: 'concepts', label: 'Concepts', icon: <Waypoints className="h-3.5 w-3.5" /> },
+    {
+      key: 'whiskers',
+      label: 'Whiskers',
+      icon: <Cat className="h-3.5 w-3.5" />,
+      count: openWhiskers,
+    },
+    {
+      key: 'contradictions',
+      label: 'Contradictions',
+      icon: <GitCompareArrows className="h-3.5 w-3.5" />,
+      count: openContradictions,
+    },
+  ];
+
+  const header = (
+    <div className="flex flex-col gap-2 px-3 pt-3">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -103,25 +136,67 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
           <span className="sr-only">All courses</span>
         </Button>
         <h1 className="truncate text-sm font-semibold text-foreground">{data.courseName}</h1>
+        <span className="text-xs text-muted-foreground">
+          {data.reading > 0 ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Reading {data.reading} session{data.reading === 1 ? '' : 's'}…
+            </span>
+          ) : (
+            `${data.sessionCount} session${data.sessionCount === 1 ? '' : 's'}`
+          )}
+        </span>
+        {data.reading === 0 &&
+          (data.unread > 0 ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-7 gap-1.5"
+              onClick={() => read(false)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Read {data.unread} session{data.unread === 1 ? '' : 's'}
+            </Button>
+          ) : (
+            data.sessionCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+                onClick={() => read(true)}
+                title="Read every session again for concepts, whiskers and contradictions"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Read all again
+              </Button>
+            )
+          ))}
       </div>
+      <div className="flex gap-1">
+        {tabs.map((t) => (
+          <Button
+            key={t.key}
+            size="sm"
+            variant={tab === t.key ? 'default' : 'ghost'}
+            className="h-8 gap-1.5 px-3 text-xs"
+            onClick={() => setTab(t.key)}
+          >
+            {t.icon}
+            {t.label}
+            {!!t.count && (
+              <span className="rounded-full bg-background/30 px-1.5 tabular-nums">{t.count}</span>
+            )}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
 
+  const list = (
+    <div className="flex h-full flex-col gap-2 overflow-hidden">
       <p className="px-2 text-xs text-muted-foreground">
-        {data.reading > 0 ? (
-          <span className="flex items-center gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Reading {data.reading} session{data.reading === 1 ? '' : 's'}…
-          </span>
-        ) : (
-          `${live.length} concept${live.length === 1 ? '' : 's'} across ${data.sessionCount} session${data.sessionCount === 1 ? '' : 's'}`
-        )}
+        {live.length} concept{live.length === 1 ? '' : 's'}
       </p>
-      {data.unread > 0 && data.reading === 0 && (
-        <Button size="sm" variant="secondary" className="mx-1 gap-1.5" onClick={findConcepts}>
-          <Sparkles className="h-3.5 w-3.5" />
-          Find concepts in {data.unread} session{data.unread === 1 ? '' : 's'}
-        </Button>
-      )}
-
       <div className="relative mx-1">
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -191,22 +266,49 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <div className="h-full p-3">
-        <div className="h-full overflow-hidden rounded-xl glass p-2">
-          {selected ? thread : list}
-        </div>
+  let body: React.ReactNode;
+  if (tab === 'whiskers') {
+    body = (
+      <div className="h-full overflow-hidden rounded-xl glass">
+        {whiskers ? (
+          <WhiskersPanel courseName={data.courseName} whiskers={whiskers} />
+        ) : (
+          <Loader2 className="m-6 h-5 w-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+    );
+  } else if (tab === 'contradictions') {
+    body = (
+      <div className="h-full overflow-hidden rounded-xl glass">
+        {contradictions ? (
+          <ContradictionsPanel items={contradictions} />
+        ) : (
+          <Loader2 className="m-6 h-5 w-5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+    );
+  } else if (isMobile) {
+    body = (
+      <div className="h-full overflow-hidden rounded-xl glass p-2">{selected ? thread : list}</div>
+    );
+  } else {
+    body = (
+      <div className="flex h-full gap-3">
+        <div className="w-72 shrink-0 overflow-hidden rounded-xl glass p-2">{list}</div>
+        <div className="min-w-0 flex-1 overflow-hidden rounded-xl glass">{thread}</div>
       </div>
     );
   }
+
   return (
-    <div className="flex h-full gap-3 p-3">
-      <div className="w-72 shrink-0 overflow-hidden rounded-xl glass p-2">{list}</div>
-      <div className="min-w-0 flex-1 overflow-hidden rounded-xl glass">{thread}</div>
+    <div className="flex h-full flex-col">
+      {header}
+      <div className="min-h-0 flex-1 p-3">{body}</div>
     </div>
   );
 }
+
+type Tab = 'concepts' | 'whiskers' | 'contradictions';
 
 function ConceptRow({
   name,

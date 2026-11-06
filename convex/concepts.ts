@@ -86,6 +86,19 @@ export const queueConceptsWhenPagesRead = async (
   if (!pending) await queueConcepts(ctx, sessionId);
 };
 
+/** A session's lines, labelled for Claude to cite (class pages or source PDF pages). */
+export const loadSessionLines = async (
+  ctx: QueryCtx,
+  session: Doc<'sessions'>,
+): Promise<RefLine[]> => {
+  if (session.kind === 'source') return sourceLines(await loadSourcePages(ctx, session._id));
+  const pages = await ctx.db
+    .query('pages')
+    .withIndex('by_session_order', (q) => q.eq('sessionId', session._id))
+    .collect();
+  return classLines(pages);
+};
+
 const requireOwnCourse = async (ctx: QueryCtx, courseId: Id<'courses'>) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
@@ -278,10 +291,13 @@ export const split = mutation({
   },
 });
 
-/** Find concepts in a course's sessions that haven't been read (or failed). */
+/**
+ * Read a course's sessions for concepts, whiskers and contradictions: the ones
+ * never read (or failed), or with `all`, every session again.
+ */
 export const readCourse = mutation({
-  args: { courseId: v.id('courses') },
-  handler: async (ctx, { courseId }): Promise<number> => {
+  args: { courseId: v.id('courses'), all: v.optional(v.boolean()) },
+  handler: async (ctx, { courseId, all }): Promise<number> => {
     const userId = await requireAuth(ctx);
     const course = await ctx.db.get(courseId);
     if (!course || course.userId !== userId) throw new Error('Course not found');
@@ -290,7 +306,10 @@ export const readCourse = mutation({
       .withIndex('by_course', (q) => q.eq('courseId', courseId))
       .collect();
     const unread = sessions.filter(
-      (s) => !s.isDeleted && (s.conceptsStatus === undefined || s.conceptsStatus === 'failed'),
+      (s) =>
+        !s.isDeleted &&
+        s.conceptsStatus !== 'pending' &&
+        (all || s.conceptsStatus === undefined || s.conceptsStatus === 'failed'),
     );
     for (const s of unread) await queueConcepts(ctx, s._id);
     return unread.length;
@@ -307,16 +326,7 @@ export const getReadInput = internalQuery({
       return null; // deleted, moved out of a course, or superseded by a newer read
     }
     const isSource = session.kind === 'source';
-    let lines: RefLine[];
-    if (isSource) {
-      lines = sourceLines(await loadSourcePages(ctx, sessionId));
-    } else {
-      const pages = await ctx.db
-        .query('pages')
-        .withIndex('by_session_order', (q) => q.eq('sessionId', sessionId))
-        .collect();
-      lines = classLines(pages);
-    }
+    const lines = await loadSessionLines(ctx, session);
     const known: (KnownConcept & { id: Id<'concepts'> })[] = (
       await conceptsOfCourse(ctx, session.courseId)
     ).map((c, i) => ({
@@ -410,7 +420,9 @@ export const saveRead = internalMutation({
       ctx,
       old.map((m) => m.conceptId),
     );
-    await ctx.db.patch(sessionId, { conceptsStatus: 'done' });
+    // Next in the same read: whiskers and contradictions (convex/gaps.ts), which
+    // marks the read done.
+    await ctx.scheduler.runAfter(0, internal.gapExtract.read, { sessionId, queuedAt });
   },
 });
 
