@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMaterial, hasEnoughMaterial } from '../convex/studyMaterial';
-import { NO_NOTES, pagesToText, toTranscriptLines } from '../convex/transcriptText';
+import { NO_NOTES, pagesToText, parseLine, toTranscriptLines } from '../convex/transcriptText';
 
 describe('toTranscriptLines', () => {
   it('keeps indentation and shorthand, drops blank lines', () => {
@@ -19,6 +19,48 @@ describe('toTranscriptLines', () => {
       'line one',
       'line two',
     ]);
+  });
+});
+
+describe('parseLine', () => {
+  it('reads titles and headings', () => {
+    expect(parseLine('# Ch. 6 Morphology')).toEqual({
+      kind: 'title',
+      indent: 0,
+      body: 'Ch. 6 Morphology',
+    });
+    expect(parseLine('## free vs bound')).toEqual({
+      kind: 'heading',
+      indent: 0,
+      body: 'free vs bound',
+    });
+  });
+
+  it('reads layout marks, keeping indentation', () => {
+    expect(parseLine('[column 2]')).toEqual({ kind: 'layout', indent: 0, body: 'column 2' });
+    expect(parseLine('  [box]')).toEqual({ kind: 'layout', indent: 2, body: 'box' });
+    expect(parseLine('[diagram: mind map]')).toEqual({
+      kind: 'layout',
+      indent: 0,
+      body: 'diagram: mind map',
+    });
+    expect(parseLine('[drawing]').kind).toBe('layout');
+  });
+
+  it('reads margin notes and leaves ordinary lines alone', () => {
+    expect(parseLine('(margin) on the exam!')).toEqual({
+      kind: 'margin',
+      indent: 0,
+      body: 'on the exam!',
+    });
+    expect(parseLine('    stem → morph. → word')).toEqual({
+      kind: 'text',
+      indent: 4,
+      body: 'stem → morph. → word',
+    });
+    // [?] alone is an unreadable word, not a layout mark; #hashtags aren't headings.
+    expect(parseLine('[?]').kind).toBe('text');
+    expect(parseLine('#1 rule').kind).toBe('text');
   });
 });
 

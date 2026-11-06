@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.14.0',
+    date: '2026-11-05',
+    title: 'Transcripts keep the shape of your page',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Titles and headings you wrote now stand out in the transcript instead of blending into the rest.',
+      },
+      {
+        kind: 'improved',
+        text: 'Diagrams and mind maps come through as their labels and the arrows between them, and boxed notes stay grouped.',
+      },
+      {
+        kind: 'improved',
+        text: 'Pages written in columns are read one column at a time, and margin notes sit next to the line they belong to.',
+      },
+      {
+        kind: 'added',
+        text: 'A Read again button on any page, so pages read before today can pick up the new layout.',
+      },
+    ],
+  },
+  {
     version: '0.13.3',
     label: '0.13.1 – 0.13.3',
     date: '2026-11-05',

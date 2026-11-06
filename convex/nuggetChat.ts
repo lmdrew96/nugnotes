@@ -12,6 +12,7 @@ import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
 import { enforceLimit, requireUserId } from './rateLimits';
+import { TRANSCRIPT_MARKS } from './transcriptText';
 
 /** Most document text a chat carries — a stack of PDFs mustn't make every turn huge. */
 export const CHAT_DOCUMENT_CHARS = 60_000;
@@ -77,7 +78,7 @@ Your personality:
 
   const pageText = pages?.trim().slice(0, CHAT_DOCUMENT_CHARS);
   if (pageText) {
-    volatilePrompt += `## Student's Handwritten Pages\nA faithful transcript of the pages they photographed, page by page. [?] marks a word that couldn't be read; don't guess what it was. ~~text~~ is something they crossed out: it is not part of their notes.\n\n${pageText}\n\n`;
+    volatilePrompt += `## Student's Handwritten Pages\nA faithful transcript of the pages they photographed, page by page. ${TRANSCRIPT_MARKS}\n\n${pageText}\n\n`;
   }
 
   if (notes) {

@@ -8,6 +8,7 @@
  * the study tools cache it (see callClaudeWithLecture in studyTools.ts).
  */
 import { ConvexError } from 'convex/values';
+import { TRANSCRIPT_MARKS } from './transcriptText';
 
 export interface StudyMaterial {
   /** Transcripts of the session's photographed pages (transcriptText.pagesToText). */
@@ -65,7 +66,7 @@ export function buildMaterial(material: StudyMaterial, maxChars = MATERIAL_CHARS
   // Without pages this is exactly the older typed-notes-only material.
   const notes = pages
     ? [
-        `Handwritten pages (faithful transcript. [?] marks a word that couldn't be read. ~~text~~ is something the student crossed out: it is not part of their notes, so never use it as content):\n${pages}`,
+        `Handwritten pages (faithful transcript. ${TRANSCRIPT_MARKS}):\n${pages}`,
         typed && `Typed notes:\n${typed}`,
       ]
         .filter(Boolean)

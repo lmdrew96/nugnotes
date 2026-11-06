@@ -133,12 +133,16 @@ export const readPages = mutation({
   },
 });
 
-/** Read one page again (only an unread or failed one, so hand fixes are never lost). */
+/**
+ * Read one page. An already-read page is only read again when the student asks
+ * with `again` (the app confirms first if that would drop their hand fixes).
+ */
 export const readPage = mutation({
-  args: { pageId: v.id('pages') },
-  handler: async (ctx, { pageId }): Promise<void> => {
+  args: { pageId: v.id('pages'), again: v.optional(v.boolean()) },
+  handler: async (ctx, { pageId, again }): Promise<void> => {
     const { page } = await requireOwnPage(ctx, pageId);
-    if (page.transcriptStatus === 'pending' || page.transcriptStatus === 'done') return;
+    if (page.transcriptStatus === 'pending') return;
+    if (page.transcriptStatus === 'done' && !again) return;
     await queueTranscription(ctx, pageId);
   },
 });
