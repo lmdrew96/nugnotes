@@ -7,7 +7,7 @@
  */
 import { ConvexError, v } from 'convex/values';
 import { api } from './_generated/api';
-import { action } from './_generated/server';
+import { action, query } from './_generated/server';
 import { enforceLimit, requireUserId } from './rateLimits';
 
 const MAX_TITLE = 200;
@@ -15,6 +15,13 @@ const MAX_DESCRIPTION = 5000;
 const MAX_FIELD = 300;
 
 const fail = (message: string) => new ConvexError({ code: 'BUG_REPORT_FAILED', message });
+
+/** Whether this deployment can file reports, so the app can hide the button when it can't. */
+export const isConfigured = query({
+  args: {},
+  handler: async (): Promise<boolean> =>
+    Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_REPO),
+});
 
 export const submit = action({
   args: {

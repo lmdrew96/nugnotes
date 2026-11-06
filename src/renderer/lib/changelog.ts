@@ -33,8 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.13.2',
-    label: '0.13.1 – 0.13.2',
+    version: '0.13.3',
+    label: '0.13.1 – 0.13.3',
     date: '2026-11-05',
     title: 'Tighter sessions, truer welcome page',
     changes: [
@@ -45,6 +45,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'improved',
         text: 'The welcome page now describes NugNotes as it really works: write on paper, snap the pages, and Nugget takes it from there.',
+      },
+      {
+        kind: 'fixed',
+        text: 'The Report a bug button in Nugget chat only shows up when reports can actually be sent.',
       },
     ],
   },
