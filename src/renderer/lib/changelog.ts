@@ -33,13 +33,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.13.1',
+    version: '0.13.2',
+    label: '0.13.1 – 0.13.2',
     date: '2026-11-05',
-    title: 'Your sessions stay yours',
+    title: 'Tighter sessions, truer welcome page',
     changes: [
       {
         kind: 'fixed',
         text: 'Only you can move your sessions to the trash or bring them back.',
+      },
+      {
+        kind: 'improved',
+        text: 'The welcome page now describes NugNotes as it really works: write on paper, snap the pages, and Nugget takes it from there.',
       },
     ],
   },

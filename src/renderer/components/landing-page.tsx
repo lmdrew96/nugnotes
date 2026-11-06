@@ -105,7 +105,7 @@ export function LandingPage() {
           </h1>
 
           <p className="text-muted-foreground max-w-lg text-lg leading-relaxed">
-            Write → upload → AI notes → study tools → one very helpful cat.
+            Write → upload → AI notes → study tools
             <br />
             Built for the way ADHD brains actually work.
           </p>
@@ -126,10 +126,10 @@ export function LandingPage() {
       <section className="mx-auto max-w-5xl px-6 pb-20">
         <div className="mb-10 text-center">
           <h2 className="text-foreground text-3xl font-bold">Everything your brain needs</h2>
-          <p className="text-muted-foreground mt-2">Five features. One cat. Zero excuses.</p>
+          <p className="text-muted-foreground mt-2">Hella features. One cat. Zero excuses.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {FEATURES.map((f) => (
             <div
               key={f.title}
@@ -148,11 +148,11 @@ export function LandingPage() {
         <h2 className="text-foreground mb-8 text-center text-2xl font-bold">How it works</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4">
           {[
-            { step: '1', label: 'Start writing', sub: 'Type, draw, or upload — no setup' },
+            { step: '1', label: 'Write on paper', sub: 'Take notes by hand, then snap the pages' },
             {
               step: '2',
               label: 'Let Nugget help',
-              sub: 'Turn documents into notes and ask questions',
+              sub: 'Nugget reads your pages and answers your questions',
             },
             {
               step: '3',
