@@ -2,7 +2,7 @@
 
 **ADHD-friendly study app** — write notes, upload documents and handwriting, and study with Nugget, your AI study cat.
 
-NugNotes is a clean-break fork of ScribeCat-v3 with everything audio removed. See [NUGNOTES-SPEC.md](NUGNOTES-SPEC.md) for what it is and where it's headed.
+NugNotes is a clean-break fork of ScribeCat-v3 with everything audio removed. Its spec lives in ChaosPatch (project `nugnotes`); [NUGNOTES-SPEC.md](NUGNOTES-SPEC.md) points to it.
 
 ## Stack
 

@@ -33,8 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.23.1',
-    label: '0.23.0 – 0.23.1',
+    version: '0.23.2',
+    label: '0.23.0 – 0.23.2',
     date: '2026-11-13',
     title: 'Nugget reads your actual pages',
     changes: [

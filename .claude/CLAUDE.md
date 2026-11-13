@@ -7,9 +7,9 @@
 Vite + React + Convex + TypeScript, using **pnpm**. After modifying dependencies or moving packages between deps/devDeps, always run `pnpm install` to regenerate the lockfile before committing.
 
 NugNotes is an ADHD-friendly study app with no audio — a **pure web app** served as static assets from Cloudflare Workers. It is a clean-break fork of ScribeCat-v3 (no syncing back).
-**Paper-first (spec v2, Nov 4 2026):** photographed handwritten notes → faithful transcripts → concepts, threads, whiskers and contradictions across a course's sessions → Nugget quizzes. No typed notes. Study rooms and exam rooms are parked: hidden from the nav, code kept.
+**Paper-first (spec v3, Nov 13 2026):** photographed handwritten notes → a hidden transcript index → themes, threads, edges and arcs, whiskers and contradictions across a course's sessions → Nugget quizzes from the page photos. No typed notes. Study rooms and exam rooms are parked: hidden from the nav, code kept.
 
-**Spec:** `docs/NUGNOTES-SPEC.md` — read it before starting work. Patches live in ChaosPatch project `nugnotes`.
+**Spec:** the ChaosPatch spec "NugNotes: paper notes that connect" (primary spec on project `nugnotes`; `cp_get_spec` with `project_slug: "nugnotes"`) is the source of truth. Read it before starting work. `docs/NUGNOTES-SPEC.md` is only a pointer to it. Patches live in the same ChaosPatch project.
 
 For stack details, read `package.json`. For structure, read the tree. For schema, read `convex/schema.ts`. Those are authoritative; a copy here would only go stale.
 
