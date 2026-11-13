@@ -136,7 +136,8 @@ export const readPages = mutation({
 
 /**
  * Read one page. An already-read page is only read again when the student asks
- * with `again` (the app confirms first if that would drop their hand fixes).
+ * with `again` (the app confirms first if that would drop lines fixed by hand
+ * before v0.19.0, when the transcript was still shown).
  */
 export const readPage = mutation({
   args: { pageId: v.id('pages'), again: v.optional(v.boolean()) },
@@ -145,26 +146,6 @@ export const readPage = mutation({
     if (page.transcriptStatus === 'pending') return;
     if (page.transcriptStatus === 'done' && !again) return;
     await queueTranscription(ctx, pageId);
-  },
-});
-
-/**
- * Fix one transcript line by hand: the only editing in the app. Claude's
- * version is kept beside it; fixing a line back to that clears the fix.
- */
-export const fixLine = mutation({
-  args: { pageId: v.id('pages'), index: v.number(), text: v.string() },
-  handler: async (ctx, { pageId, index, text }): Promise<void> => {
-    const { page } = await requireOwnPage(ctx, pageId);
-    const lines = page.transcript;
-    const line = lines?.[index];
-    if (!lines || !line) throw new Error('Line not found');
-    const fixed = text.replace(/\s+$/, '');
-    if (!fixed.trim()) throw new Error('A line can’t be empty');
-    const original = line.original ?? line.text;
-    const next = [...lines];
-    next[index] = fixed === original ? { text: original } : { text: fixed, original };
-    await ctx.db.patch(pageId, { transcript: next });
   },
 });
 

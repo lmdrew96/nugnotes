@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.19.0',
+    date: '2026-11-13',
+    title: 'Your pages, not Nugget’s typing',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Opening a page now shows just your photo, full size. Nugget still reads each page to connect your notes, but you don’t have to read its typed version.',
+      },
+      {
+        kind: 'improved',
+        text: 'If Nugget seems to have misread a page, tap Read again instead of fixing lines by hand.',
+      },
+    ],
+  },
+  {
     version: '0.18.1',
     label: '0.18.0 – 0.18.1',
     date: '2026-11-05',

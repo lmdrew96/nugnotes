@@ -1,4 +1,4 @@
-import { PageTranscript } from '@/components/page-transcript';
+import { PageReading } from '@/components/page-transcript';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { usePageQueue, usePhotoUpload } from '@/hooks/use-page-photos';
@@ -255,18 +255,9 @@ function PageViewer({
       <DialogTitle className="text-sm">
         Page {number} of {total}
       </DialogTitle>
-      {/* Photo and transcript side by side (stacked on phones): paper is the original. */}
-      <div className="grid min-h-0 flex-1 gap-3 overflow-auto md:grid-cols-2 md:overflow-hidden">
-        <div className="md:min-h-0 md:overflow-auto">
-          <img src={page.url} alt={`Page ${number}`} className="mx-auto max-h-[75vh] w-auto" />
-        </div>
-        <div className="rounded-lg glass p-3 md:min-h-0 md:overflow-auto">
-          <PageTranscript
-            pageId={page._id}
-            status={page.transcriptStatus}
-            lines={page.transcript}
-          />
-        </div>
+      {/* The photo is the page: Nugget's transcript is a hidden index, never shown. */}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <img src={page.url} alt={`Page ${number}`} className="mx-auto max-h-[80vh] w-auto" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -311,6 +302,7 @@ function PageViewer({
           )}
           Retake
         </Button>
+        <PageReading pageId={page._id} status={page.transcriptStatus} lines={page.transcript} />
         <Button
           size="sm"
           variant={confirmDelete ? 'destructive' : 'ghost'}

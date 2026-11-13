@@ -9,11 +9,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { friendlyError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useMutation } from 'convex/react';
-import { AlertCircle, Loader2, RotateCcw, ScanText } from 'lucide-react';
+import { AlertCircle, Loader2, ScanText } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../convex/_generated/api';
@@ -22,216 +21,65 @@ import { type TranscriptLine, parseLine } from '../../../convex/transcriptText';
 
 export type TranscriptStatus = 'pending' | 'done' | 'failed' | undefined;
 
-interface PageTranscriptProps {
+interface PageReadingProps {
   pageId: Id<'pages'>;
   status: TranscriptStatus;
   lines?: TranscriptLine[];
 }
 
 /**
- * The page's faithful transcript, beside its photo. Tap a line to fix it by
- * hand; Claude's version is kept and the fix can be undone.
+ * Where Nugget is with reading a page, and the way to fix a bad read: read it
+ * again. The transcript itself is a hidden index and is never shown here.
  */
-export function PageTranscript({ pageId, status, lines }: PageTranscriptProps) {
-  const readPage = useMutation(api.pages.readPage);
-  const [editing, setEditing] = useState<number | null>(null);
-
-  if (status === 'pending') {
-    return (
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Nugget is reading this page…
-      </p>
-    );
-  }
-
-  if (status !== 'done' || !lines) {
-    return (
-      <div className="flex flex-col items-start gap-2">
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          {status === 'failed' ? (
-            <>
-              <AlertCircle className="h-4 w-4 text-destructive" />
-              Nugget couldn’t read this page.
-            </>
-          ) : (
-            'This page hasn’t been read yet.'
-          )}
-        </p>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="gap-1.5"
-          onClick={() =>
-            void readPage({ pageId }).catch((error: unknown) =>
-              toast.error(friendlyError(error, 'Couldn’t start reading the page. Try again.')),
-            )
-          }
-        >
-          <ScanText className="h-4 w-4" />
-          {status === 'failed' ? 'Try again' : 'Read this page'}
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-0.5 font-mono text-sm leading-relaxed">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <p className="font-sans text-xs text-muted-foreground">
-          Tap a line to fix it. [?] marks a word Nugget couldn’t read.
-        </p>
-        <ReadAgainButton
-          pageId={pageId}
-          fixes={lines.filter((line) => line.original !== undefined).length}
-        />
-      </div>
-      {lines.map((line, index) =>
-        editing === index ? (
-          <LineEditor
-            // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional; the index is the line's identity
-            key={index}
-            pageId={pageId}
-            index={index}
-            line={line}
-            onDone={() => setEditing(null)}
-          />
-        ) : (
-          <LineView
-            // biome-ignore lint/suspicious/noArrayIndexKey: lines are positional; the index is the line's identity
-            key={index}
-            pageId={pageId}
-            index={index}
-            line={line}
-            onEdit={() => setEditing(index)}
-          />
-        ),
-      )}
-    </div>
-  );
-}
-
-function LineView({
-  pageId,
-  index,
-  line,
-  onEdit,
-}: {
-  pageId: Id<'pages'>;
-  index: number;
-  line: TranscriptLine;
-  onEdit: () => void;
-}) {
-  const fixLine = useMutation(api.pages.fixLine);
-  const original = line.original;
-  return (
-    <div className="group flex items-start gap-2">
-      <button
-        type="button"
-        onClick={onEdit}
-        className={cn(
-          'min-h-7 flex-1 whitespace-pre-wrap rounded px-1.5 text-left hover:bg-secondary',
-          original !== undefined && 'bg-primary/10',
-        )}
-        title={original !== undefined ? `Nugget read: ${original}` : 'Fix this line'}
-      >
-        <TranscriptLineView text={line.text} />
-      </button>
-      {original !== undefined && (
-        <button
-          type="button"
-          className="mt-1 flex shrink-0 items-center gap-1 font-sans text-xs text-muted-foreground hover:text-foreground"
-          onClick={() =>
-            void fixLine({ pageId, index, text: original }).catch((error: unknown) =>
-              toast.error(friendlyError(error, 'Couldn’t undo that fix. Try again.')),
-            )
-          }
-          title={`Back to what Nugget read: ${original}`}
-        >
-          <RotateCcw className="h-3 w-3" />
-          edited
-        </button>
-      )}
-    </div>
-  );
-}
-
-function LineEditor({
-  pageId,
-  index,
-  line,
-  onDone,
-}: {
-  pageId: Id<'pages'>;
-  index: number;
-  line: TranscriptLine;
-  onDone: () => void;
-}) {
-  const fixLine = useMutation(api.pages.fixLine);
-  const [draft, setDraft] = useState(line.text);
-
-  const save = async () => {
-    if (draft.trim() && draft !== line.text) {
-      try {
-        await fixLine({ pageId, index, text: draft });
-      } catch (error) {
-        toast.error(friendlyError(error, 'Couldn’t save that fix. Try again.'));
-      }
-    }
-    onDone();
-  };
-
-  return (
-    <Input
-      autoFocus
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => void save()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-        if (e.key === 'Escape') {
-          setDraft(line.text);
-          onDone();
-        }
-      }}
-      aria-label={`Fix line ${index + 1}`}
-      className="h-8 font-mono"
-    />
-  );
-}
-
-/**
- * Read an already-read page again, e.g. to pick up better transcription. If the
- * student has fixed lines by hand, confirm first: reading again replaces them.
- */
-function ReadAgainButton({ pageId, fixes }: { pageId: Id<'pages'>; fixes: number }) {
+export function PageReading({ pageId, status, lines }: PageReadingProps) {
   const readPage = useMutation(api.pages.readPage);
   const [confirming, setConfirming] = useState(false);
+  // Lines fixed by hand before v0.19.0; reading again would replace them.
+  const fixes = lines?.filter((line) => line.original !== undefined).length ?? 0;
 
   const read = () =>
-    void readPage({ pageId, again: true }).catch((error: unknown) =>
+    void readPage({ pageId, again: status === 'done' }).catch((error: unknown) =>
       toast.error(friendlyError(error, 'Couldn’t start reading the page. Try again.')),
     );
 
+  if (status === 'pending') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Nugget is reading this page…
+      </span>
+    );
+  }
+
   return (
     <>
+      {status === 'failed' && (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+          Nugget couldn’t read this page.
+        </span>
+      )}
       <Button
         size="sm"
-        variant="ghost"
-        className="h-7 shrink-0 gap-1 px-2 font-sans text-xs"
-        onClick={() => (fixes > 0 ? setConfirming(true) : read())}
-        title="Have Nugget read this page again"
+        variant="secondary"
+        className="gap-1.5"
+        onClick={() => (status === 'done' && fixes > 0 ? setConfirming(true) : read())}
+        title={
+          status === 'done'
+            ? 'Have Nugget read this page again, e.g. if it links the wrong things'
+            : undefined
+        }
       >
-        <ScanText className="h-3.5 w-3.5" />
-        Read again
+        <ScanText className="h-4 w-4" />
+        {status === 'done' ? 'Read again' : status === 'failed' ? 'Try again' : 'Read this page'}
       </Button>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Read this page again?</AlertDialogTitle>
             <AlertDialogDescription>
-              You fixed {fixes === 1 ? '1 line' : `${fixes} lines`} on this page by hand. Reading it
-              again replaces the whole transcript, fixes included.
+              You fixed {fixes === 1 ? '1 line' : `${fixes} lines`} of Nugget’s reading of this page
+              by hand. Reading it again replaces them.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
