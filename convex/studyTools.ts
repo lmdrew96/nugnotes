@@ -3,10 +3,12 @@
  * Each tool generates structured JSON output from the session's notes and documents.
  */
 
+import type Anthropic from '@anthropic-ai/sdk';
 import { v } from 'convex/values';
 import type { Id } from './_generated/dataModel';
 import { type ActionCtx, action, internalMutation, mutation, query } from './_generated/server';
 import { callClaude as callClaudeShared } from './config';
+import { PHOTOS_NOTE, sessionPhotos } from './pagePhotos';
 import { buildMaterial, requireEnoughMaterial, sessionMaterial } from './studyMaterial';
 import {
   getConceptMapPrompt,
@@ -36,7 +38,8 @@ async function loadToolSession(ctx: ActionCtx, sessionId: Id<'sessions'>) {
   if (!session) throw new Error('Session not found');
   const material = sessionMaterial(session);
   requireEnoughMaterial(material);
-  return { session, lecture: buildMaterial(material) };
+  const { blocks: photos } = await sessionPhotos(ctx, sessionId);
+  return { session, lecture: buildMaterial(material), photos };
 }
 
 /** Strip markdown code fences that Claude sometimes wraps JSON in */
@@ -59,6 +62,8 @@ export const callClaudeWithLecture = (
   lecture: string,
   instruction: string,
   maxTokens: number,
+  /** The session's page photos (convex/pagePhotos.ts), read before the instruction. */
+  photos: Anthropic.Messages.ContentBlockParam[] = [],
 ): Promise<string> =>
   callClaudeShared({
     maxTokens,
@@ -69,7 +74,14 @@ export const callClaudeWithLecture = (
         cache_control: { type: 'ephemeral' },
       },
     ],
-    messages: [{ role: 'user', content: instruction }],
+    messages: [
+      {
+        role: 'user',
+        content: photos.length
+          ? [...photos, { type: 'text', text: `${PHOTOS_NOTE}\n\n${instruction}` }]
+          : instruction,
+      },
+    ],
     onUsage: (usage) =>
       console.log(
         `[studyTools] input=${usage.input_tokens} cache_read=${usage.cache_read_input_tokens ?? 0} cache_write=${usage.cache_creation_input_tokens ?? 0}`,
@@ -326,11 +338,11 @@ export const saveChatHistory = mutation({
 export const generateSummary = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getSummaryPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -349,11 +361,11 @@ export const generateSummary = action({
 export const generateKeyConcepts = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getKeyConceptsPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -375,12 +387,12 @@ export const generateFlashcards = action({
     count: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const count = args.count ?? 10;
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getFlashcardPrompt(lectureType, count);
-    const response = await callClaudeWithLecture(lecture, prompt, 3072);
+    const response = await callClaudeWithLecture(lecture, prompt, 3072, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -402,12 +414,12 @@ export const generateQuiz = action({
     questionCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const questionCount = args.questionCount ?? 10;
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getQuizPrompt(lectureType, questionCount);
-    const response = await callClaudeWithLecture(lecture, prompt, 4096);
+    const response = await callClaudeWithLecture(lecture, prompt, 4096, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -426,11 +438,11 @@ export const generateQuiz = action({
 export const generateConceptMap = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getConceptMapPrompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {
@@ -449,11 +461,11 @@ export const generateConceptMap = action({
 export const generateEli5 = action({
   args: { sessionId: v.id('sessions') },
   handler: async (ctx, args) => {
-    const { session, lecture } = await loadToolSession(ctx, args.sessionId);
+    const { session, lecture, photos } = await loadToolSession(ctx, args.sessionId);
 
     const lectureType = (session.lectureType || 'general') as LectureType;
     const prompt = getEli5Prompt(lectureType);
-    const response = await callClaudeWithLecture(lecture, prompt, 2048);
+    const response = await callClaudeWithLecture(lecture, prompt, 2048, photos);
     const parsed = JSON.parse(extractJson(response));
 
     await ctx.runMutation(internal.studyTools.saveToolResult, {

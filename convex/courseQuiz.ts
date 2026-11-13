@@ -13,6 +13,7 @@ import type { RefLine } from './conceptText';
 import { loadSessionLines } from './concepts';
 import { AI_MODEL_SONNET, callClaude } from './config';
 import { formatDateKey } from './dateKey';
+import { PHOTOS_NOTE, pagesNote, photoBlocks } from './pagePhotos';
 import { buildQuizPrompt, parseQuiz } from './quizText';
 import { enforceLimit, requireUserId } from './rateLimits';
 import { NOT_ENOUGH_MATERIAL } from './studyMaterial';
@@ -36,10 +37,15 @@ interface QuizInput {
   focus?: { name: string; aliases: string[]; ideas?: string[] };
   lines: QuizLine[];
   whiskers: Doc<'whiskers'>[];
+  /** The sessions in scope and, for a thread or theme, its concepts: they pick the page photos. */
+  sessionIds: Id<'sessions'>[];
+  conceptIds?: Id<'concepts'>[];
 }
 
 export interface CourseQuiz {
   scopeLabel: string;
+  /** "Nugget read the 12 most relevant of 40 pages", when the photos were capped. */
+  pagesNote?: string;
   questions: {
     question: string;
     options: string[];
@@ -70,11 +76,13 @@ export const getQuizInput = internalQuery({
     ).filter((s) => !s.isDeleted);
 
     let focus: QuizInput['focus'];
+    let conceptIds: Id<'concepts'>[] | undefined;
     let scopeLabel = 'the whole course';
     if (scope.kind === 'thread') {
       const concept = await ctx.db.get(scope.conceptId);
       if (!concept || concept.courseId !== courseId) return null;
       focus = { name: concept.name, aliases: concept.aliases };
+      conceptIds = [concept._id];
       scopeLabel = `the thread on ${concept.name}`;
       const ids = new Set(
         (
@@ -102,6 +110,7 @@ export const getQuizInput = internalQuery({
           .collect()
       ).filter((c) => !c.dismissed && c.themeId && themeIds.has(c.themeId));
       focus = { name: theme.name, aliases: [], ideas: concepts.map((c) => c.name) };
+      conceptIds = concepts.map((c) => c._id);
       scopeLabel = `the theme ${theme.name}`;
       const ids = new Set<Id<'sessions'>>();
       for (const c of concepts) {
@@ -166,7 +175,15 @@ export const getQuizInput = internalQuery({
         .collect()
     ).filter((w) => w.status === 'open' && inScope.has(w.sessionId));
 
-    return { courseName: course.name, scopeLabel, focus, lines, whiskers };
+    return {
+      courseName: course.name,
+      scopeLabel,
+      focus,
+      lines,
+      whiskers,
+      sessionIds: sessions.map((s) => s._id),
+      conceptIds,
+    };
   },
 });
 
@@ -190,6 +207,18 @@ export const generate = action({
     if (textChars < 80) throw new ConvexError(NOT_ENOUGH_MATERIAL);
 
     const n = Math.min(Math.max(Math.round(count), 3), 20);
+    const picked = await ctx.runQuery(internal.pagePhotos.pick, {
+      sessionIds: input.sessionIds,
+      conceptIds: input.conceptIds,
+    });
+    const photos = await photoBlocks(picked.photos);
+    const prompt = buildQuizPrompt({
+      courseName: input.courseName,
+      scope: input.scopeLabel,
+      focus: input.focus,
+      lines: input.lines,
+      count: n,
+    });
     const reply = await callClaude({
       // Sonnet: a wrong "right answer" teaches the wrong thing (Haiku wrote one
       // in testing, Nov 5).
@@ -198,13 +227,15 @@ export const generate = action({
       messages: [
         {
           role: 'user',
-          content: buildQuizPrompt({
-            courseName: input.courseName,
-            scope: input.scopeLabel,
-            focus: input.focus,
-            lines: input.lines,
-            count: n,
-          }),
+          content: photos.length
+            ? [
+                ...photos,
+                {
+                  type: 'text',
+                  text: `${PHOTOS_NOTE} Still cite answers by the line labels in the notes below.\n\n${prompt}`,
+                },
+              ]
+            : prompt,
         },
       ],
     });
@@ -242,6 +273,6 @@ export const generate = action({
         }))
       : [];
 
-    return { scopeLabel: input.scopeLabel, questions, checkIns };
+    return { scopeLabel: input.scopeLabel, pagesNote: pagesNote(picked), questions, checkIns };
   },
 });

@@ -16,6 +16,14 @@ import { ConvexError } from 'convex/values';
 export const AI_MODEL = 'claude-haiku-5-5';
 export const AI_MODEL_SONNET = 'claude-sonnet-5-5';
 
+/**
+ * Most page photos sent with one AI call (chat, Key Points, study tools, course
+ * quiz). A full-size page photo is ~4,800 input tokens, so 12 pages is ~58k
+ * tokens: about $0.006 on Haiku 5.5 and $0.12 on Sonnet 5.5 per call before
+ * caching. Over the cap, the most relevant pages are picked (convex/pagePhotos.ts).
+ */
+export const MAX_PAGE_IMAGES = 12;
+
 /** Shown when the model declines a request (stop_reason "refusal"). */
 export const AI_DECLINED = {
   code: 'AI_DECLINED',

@@ -11,6 +11,7 @@ import { v } from 'convex/values';
 import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
+import { PHOTOS_NOTE, sessionPhotos } from './pagePhotos';
 import { enforceLimit, requireUserId } from './rateLimits';
 import { sessionMaterial } from './studyMaterial';
 import { TRANSCRIPT_MARKS } from './transcriptText';
@@ -130,7 +131,7 @@ export const send = action({
     includeDocuments: v.boolean(),
     currentDateTime: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{ response: string }> => {
+  handler: async (ctx, args): Promise<{ response: string; pagesNote?: string }> => {
     const userId = await requireUserId(ctx);
     await enforceLimit(ctx, 'aiChat', userId);
 
@@ -154,6 +155,25 @@ export const send = action({
     });
     const cachedChars = system[0].cache_control ? system[0].text.length : 0;
 
+    // The session's page photos ride on the conversation's first message, so
+    // they sit in the same place every turn.
+    const photos: Awaited<ReturnType<typeof sessionPhotos>> =
+      args.includeNotes && session ? await sessionPhotos(ctx, session._id) : { blocks: [] };
+    const turns: Anthropic.Messages.MessageParam[] = [
+      ...args.conversationHistory.slice(-MAX_HISTORY),
+      { role: 'user', content: args.message },
+    ];
+    const first = turns.findIndex((t) => t.role === 'user');
+    if (photos.blocks.length > 0 && first >= 0) {
+      turns[first] = {
+        role: 'user',
+        content: [
+          ...photos.blocks,
+          { type: 'text', text: `${PHOTOS_NOTE}\n\n${String(turns[first].content)}` },
+        ],
+      };
+    }
+
     const response = await callClaude({
       maxTokens: 1024,
       system,
@@ -166,11 +186,8 @@ export const send = action({
           `[nuggetChat] tokens in=${usage.input_tokens} cached_chars=${cachedChars} cache_write=${usage.cache_creation_input_tokens ?? 0} cache_read=${usage.cache_read_input_tokens ?? 0}`,
         );
       },
-      messages: [
-        ...args.conversationHistory.slice(-MAX_HISTORY),
-        { role: 'user' as const, content: args.message },
-      ],
+      messages: turns,
     });
-    return { response };
+    return { response, pagesNote: photos.note };
   },
 });

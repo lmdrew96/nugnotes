@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.23.0',
+    date: '2026-11-13',
+    title: 'Nugget reads your actual pages',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Chat, Key Points, quizzes and the study tools now look at the photos of your pages, so Nugget sees your arrows, boxes and drawings, not just a typed copy.',
+      },
+      {
+        kind: 'improved',
+        text: 'When there are too many pages to send at once, Nugget picks the ones most about the topic and tells you how many it read.',
+      },
+    ],
+  },
+  {
     version: '0.22.0',
     date: '2026-11-13',
     title: 'See how your ideas connect',

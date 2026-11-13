@@ -26,7 +26,8 @@ export function StudyNuggetNotes({ notes, sessionId }: StudyNuggetNotesProps) {
     if (!sessionId) return;
     setIsGenerating(true);
     try {
-      await generateKeyPoints({ sessionId });
+      const { pagesNote } = await generateKeyPoints({ sessionId });
+      if (pagesNote) toast.info(pagesNote);
     } catch (error) {
       console.error('Generating key points failed:', error);
       toast.error(

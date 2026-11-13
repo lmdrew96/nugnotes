@@ -45,6 +45,7 @@ export function NuggetChat({ sessionId, hasDocuments, isOpen, onOpenChange }: Nu
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const notedSession = useRef<string | undefined>(undefined);
 
   const sendChat = useAction(api.nuggetChat.send);
   const submitBug = useAction(api.reportBug.submit);
@@ -145,7 +146,7 @@ export function NuggetChat({ sessionId, hasDocuments, isOpen, onOpenChange }: Nu
       setIsLoading(true);
 
       try {
-        const { response } = await sendChat({
+        const { response, pagesNote } = await sendChat({
           message: userMessage.content,
           conversationHistory: messages
             .filter((m) => !m.id.startsWith('error-'))
@@ -158,6 +159,11 @@ export function NuggetChat({ sessionId, hasDocuments, isOpen, onOpenChange }: Nu
             timeStyle: 'short',
           }),
         });
+        // Say once per session when Nugget could only look at some of its pages.
+        if (pagesNote && notedSession.current !== sessionId) {
+          notedSession.current = sessionId;
+          toast.info(pagesNote);
+        }
         const assistantMessage: ChatMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',

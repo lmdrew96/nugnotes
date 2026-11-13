@@ -324,6 +324,9 @@ function QuizRun({
             <p className="text-xs text-muted-foreground">
               {buddyName} · {quiz.scopeLabel}
             </p>
+            {quiz.pagesNote && (
+              <p className="text-[11px] text-muted-foreground">{quiz.pagesNote}</p>
+            )}
             <Progress value={(Math.min(position, total) / total) * 100} className="mt-1 h-1" />
           </div>
           <span className="text-xs tabular-nums text-muted-foreground">

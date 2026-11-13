@@ -42,6 +42,7 @@ import type * as messaging from "../messaging.js";
 import type * as messagingHelpers from "../messagingHelpers.js";
 import type * as nuggetChat from "../nuggetChat.js";
 import type * as nuggetNotes from "../nuggetNotes.js";
+import type * as pagePhotos from "../pagePhotos.js";
 import type * as pages from "../pages.js";
 import type * as parseDocument from "../parseDocument.js";
 import type * as productivity from "../productivity.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   messagingHelpers: typeof messagingHelpers;
   nuggetChat: typeof nuggetChat;
   nuggetNotes: typeof nuggetNotes;
+  pagePhotos: typeof pagePhotos;
   pages: typeof pages;
   parseDocument: typeof parseDocument;
   productivity: typeof productivity;

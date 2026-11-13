@@ -8,29 +8,34 @@ import { ConvexError, v } from 'convex/values';
 import { api } from './_generated/api';
 import { action } from './_generated/server';
 import { callClaude } from './config';
+import { PHOTOS_NOTE, sessionPhotos } from './pagePhotos';
 import { type LectureType, getKeyPointsPrompt, parseKeyPoints } from './prompts';
 import { enforceLimit, requireUserId } from './rateLimits';
 import { buildMaterial, requireEnoughMaterial, sessionMaterial } from './studyMaterial';
 
 export const generateKeyPoints = action({
   args: { sessionId: v.id('sessions') },
-  handler: async (ctx, { sessionId }): Promise<{ count: number }> => {
+  handler: async (ctx, { sessionId }): Promise<{ count: number; pagesNote?: string }> => {
     await enforceLimit(ctx, 'aiGenerate', await requireUserId(ctx));
     // Runs as the caller: a session that isn't theirs comes back null.
     const session = await ctx.runQuery(api.sessions.get, { id: sessionId });
     if (!session) throw new ConvexError({ code: 'NOT_FOUND', message: 'Session not found.' });
     const material = sessionMaterial(session);
     requireEnoughMaterial(material);
+    const photos = await sessionPhotos(ctx, sessionId);
+    const prompt = getKeyPointsPrompt(
+      buildMaterial(material),
+      (session.lectureType || 'general') as LectureType,
+    );
 
     const reply = await callClaude({
       maxTokens: 600,
       messages: [
         {
           role: 'user',
-          content: getKeyPointsPrompt(
-            buildMaterial(material),
-            (session.lectureType || 'general') as LectureType,
-          ),
+          content: photos.blocks.length
+            ? [...photos.blocks, { type: 'text', text: `${PHOTOS_NOTE}\n\n${prompt}` }]
+            : prompt,
         },
       ],
     });
@@ -46,6 +51,6 @@ export const generateKeyPoints = action({
       id: sessionId,
       nuggetNotes: points.map((text) => ({ text })),
     });
-    return { count: points.length };
+    return { count: points.length, pagesNote: photos.note };
   },
 });
