@@ -6,6 +6,7 @@ import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
 import { checkNotBlocked, sortParticipantIds, verifyFriendship } from './messagingHelpers';
+import { buddyOf } from './userProfiles';
 
 // ─── Queries ─────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export const listConversations = query({
             username: profile.username,
             displayName: profile.displayName,
             avatarUrl: profile.avatarUrl,
+            buddyVariant: await buddyOf(ctx, otherUserId),
             isOnline: profile.lastSeenAt !== undefined && now - profile.lastSeenAt < 60_000,
           },
           lastMessageText: conversation.lastMessageText ?? null,

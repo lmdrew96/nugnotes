@@ -1,7 +1,9 @@
+import { UserAvatar } from '@/components/friends/user-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { useApiKeys } from '@/hooks/use-api-keys';
+import { useStudySettings } from '@/hooks/use-productivity';
 import type { useUserProfile } from '@/hooks/use-user-profile';
 import type { useUser } from '@clerk/clerk-react';
 import { Copy, Key } from 'lucide-react';
@@ -55,12 +57,28 @@ export function AccountTab({
   onSignOut,
 }: AccountTabProps) {
   const id = useId();
+  const { settings } = useStudySettings();
   return (
     <div className="space-y-5">
       <div className="space-y-2">
         <p className="text-sm leading-none font-medium text-foreground">Username</p>
         {profile ? (
-          <p className="text-sm text-accent font-medium">@{profile.username}</p>
+          <div className="flex items-center gap-3">
+            {/* What friends see: your study buddy cat (Appearance), else your picture. */}
+            <UserAvatar
+              displayName={profile.displayName}
+              avatarUrl={profile.avatarUrl}
+              buddyVariant={settings?.buddyVariant}
+            />
+            <div>
+              <p className="text-sm text-accent font-medium">@{profile.username}</p>
+              <p className="text-xs text-muted-foreground">
+                {settings?.buddyVariant
+                  ? 'Friends see your study buddy as your picture. Change it in Appearance.'
+                  : 'Pick a study buddy in Appearance and friends will see it as your picture.'}
+              </p>
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">
             Visit the{' '}

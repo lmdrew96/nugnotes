@@ -33,6 +33,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.24.0',
+    date: '2026-11-13',
+    title: 'Your study buddy is your picture',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Friends and Messages now show each person’s study buddy cat as their picture. If someone hasn’t picked one, you’ll see their photo or initials.',
+      },
+      {
+        kind: 'added',
+        text: 'Settings → Account shows the picture your friends see.',
+      },
+    ],
+  },
+  {
     version: '0.23.2',
     label: '0.23.0 – 0.23.2',
     date: '2026-11-13',

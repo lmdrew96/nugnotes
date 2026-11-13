@@ -53,6 +53,7 @@ export function UserSearch() {
               username={user.username}
               displayName={user.displayName}
               avatarUrl={user.avatarUrl}
+              buddyVariant={user.buddyVariant}
               onSendRequest={() => void sendRequest({ receiverId: user.userId })}
               onAcceptRequest={(id) =>
                 void acceptRequest({ friendshipId: id as Id<'friendships'> })
@@ -70,6 +71,7 @@ function SearchResult({
   username,
   displayName,
   avatarUrl,
+  buddyVariant,
   onSendRequest,
   onAcceptRequest,
 }: {
@@ -77,6 +79,7 @@ function SearchResult({
   username: string;
   displayName: string;
   avatarUrl?: string;
+  buddyVariant?: string;
   onSendRequest: () => void;
   onAcceptRequest: (friendshipId: string) => void;
 }) {
@@ -138,6 +141,7 @@ function SearchResult({
       username={username}
       displayName={displayName}
       avatarUrl={avatarUrl}
+      buddyVariant={buddyVariant}
       action={getAction()}
     />
   );

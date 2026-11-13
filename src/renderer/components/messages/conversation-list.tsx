@@ -1,3 +1,4 @@
+import { UserAvatar } from '@/components/friends/user-avatar';
 import { cn } from '@/lib/utils';
 import type { Id } from '../../../../convex/_generated/dataModel';
 
@@ -8,6 +9,7 @@ interface ConversationItem {
     username: string;
     displayName: string;
     avatarUrl?: string;
+    buddyVariant?: string;
     isOnline: boolean;
   };
   lastMessageText: string | null;
@@ -50,12 +52,6 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
     <div className="space-y-1 p-2">
       {conversations.map((convo) => {
         const { otherUser } = convo;
-        const initials = otherUser.displayName
-          .split(' ')
-          .map((n) => n[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2);
 
         return (
           <button
@@ -71,17 +67,11 @@ export function ConversationList({ conversations, selectedId, onSelect }: Conver
           >
             {/* Avatar */}
             <div className="relative shrink-0">
-              {otherUser.avatarUrl ? (
-                <img
-                  src={otherUser.avatarUrl}
-                  alt={otherUser.displayName}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--glass-bg)] text-sm font-medium text-foreground">
-                  {initials}
-                </div>
-              )}
+              <UserAvatar
+                displayName={otherUser.displayName}
+                avatarUrl={otherUser.avatarUrl}
+                buddyVariant={otherUser.buddyVariant}
+              />
               {otherUser.isOnline && (
                 <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-background" />
               )}

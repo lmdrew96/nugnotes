@@ -5,6 +5,7 @@
 import { ConvexError, v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
+import { buddyOf } from './userProfiles';
 
 // ─── Queries ─────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export const listFriends = query({
               username: profile.username,
               displayName: profile.displayName,
               avatarUrl: profile.avatarUrl,
+              buddyVariant: await buddyOf(ctx, friendId),
               isOnline: profile.lastSeenAt !== undefined && now - profile.lastSeenAt < 60_000,
             }
           : null;
@@ -91,6 +93,7 @@ export const listPendingRequests = query({
             username: profile?.username ?? 'unknown',
             displayName: profile?.displayName ?? 'Unknown',
             avatarUrl: profile?.avatarUrl,
+            buddyVariant: await buddyOf(ctx, otherUserId),
             createdAt: req.createdAt,
           };
         }),

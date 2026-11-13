@@ -4,7 +4,7 @@
  */
 
 import { ConvexError, v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import { type QueryCtx, mutation, query } from './_generated/server';
 import { requireAuth, requireAuthWithProfile } from './authHelpers';
 
 // ─── Queries ─────────────────────────────────────────────────
@@ -33,6 +33,19 @@ export const getProfileByUsername = query({
   },
 });
 
+/**
+ * Someone's study buddy cat (Settings → Appearance), shown as their avatar to
+ * other people. The only setting anyone else can see; undefined if they never
+ * picked one.
+ */
+export const buddyOf = async (ctx: QueryCtx, userId: string): Promise<string | undefined> =>
+  (
+    await ctx.db
+      .query('userSettings')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+  )?.buddyVariant;
+
 /** Search users by username prefix (for friend discovery) */
 export const searchUsers = query({
   args: { query: v.string() },
@@ -46,7 +59,11 @@ export const searchUsers = query({
       .take(10);
 
     // Exclude self from results
-    return results.filter((p) => p.userId !== userId);
+    return Promise.all(
+      results
+        .filter((p) => p.userId !== userId)
+        .map(async (p) => ({ ...p, buddyVariant: await buddyOf(ctx, p.userId) })),
+    );
   },
 });
 

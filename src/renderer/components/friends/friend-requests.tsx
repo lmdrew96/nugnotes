@@ -40,6 +40,7 @@ export function FriendRequests() {
                 username={req.username}
                 displayName={req.displayName}
                 avatarUrl={req.avatarUrl}
+                buddyVariant={req.buddyVariant}
                 action={
                   <div className="flex items-center gap-1">
                     <Button
@@ -92,6 +93,7 @@ export function FriendRequests() {
                 username={req.username}
                 displayName={req.displayName}
                 avatarUrl={req.avatarUrl}
+                buddyVariant={req.buddyVariant}
                 subtitle="Pending..."
                 action={
                   <Button

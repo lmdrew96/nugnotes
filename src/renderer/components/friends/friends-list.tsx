@@ -61,6 +61,7 @@ export function FriendsList() {
             username={friend.username}
             displayName={friend.displayName}
             avatarUrl={friend.avatarUrl}
+            buddyVariant={friend.buddyVariant}
             isOnline={friend.isOnline}
             action={
               <FriendActions
