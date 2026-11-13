@@ -23,6 +23,10 @@ export default defineSchema({
     conceptsLock: v.optional(
       v.object({ sessionId: v.id('sessions'), queuedAt: v.number(), startedAt: v.number() }),
     ),
+    // Grouping the course's concepts into themes (convex/themes.ts), after its
+    // sessions are read. themesQueuedAt identifies the latest queued grouping.
+    themesStatus: v.optional(v.union(v.literal('pending'), v.literal('done'), v.literal('failed'))),
+    themesQueuedAt: v.optional(v.number()),
   }).index('by_user', ['userId']),
 
   // Study sessions: one class meeting (page photos), or an older typed/uploaded session
@@ -117,6 +121,28 @@ export default defineSchema({
     aliases: v.array(v.string()),
     kind: v.optional(v.string()),
     // Dismissed by the student: hidden, and kept so it isn't found again.
+    dismissed: v.boolean(),
+    // The theme it's grouped under (a top-level theme or a sub-theme).
+    themeId: v.optional(v.id('themes')),
+    // The student moved it there: regrouping leaves it alone.
+    themePinned: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_course', ['courseId']),
+
+  // Themes: the handful of big topics a course's concepts group into (Memory,
+  // Perception…), found by Claude; at most one level of sub-themes. A Claude
+  // layer the student corrects: rename, move a concept, dismiss.
+  themes: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    name: v.string(),
+    // Set on a sub-theme (one level only).
+    parentId: v.optional(v.id('themes')),
+    // The student named it: regrouping keeps the name.
+    renamed: v.boolean(),
+    // Dismissed by the student: its concepts are regrouped elsewhere, and the
+    // grouping isn't suggested again.
     dismissed: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),

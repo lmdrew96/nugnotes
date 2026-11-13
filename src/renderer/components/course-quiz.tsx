@@ -22,13 +22,17 @@ import type { Id } from '../../../convex/_generated/dataModel';
 import type { CourseQuiz as Quiz } from '../../../convex/courseQuiz';
 import { formatDateKey } from '../../../convex/dateKey';
 
-type ScopeKind = 'course' | 'thread' | 'range';
+type ScopeKind = 'course' | 'theme' | 'thread' | 'range';
 
 interface CourseQuizProps {
   courseId: Id<'courses'>;
   concepts: { _id: Id<'concepts'>; name: string; dismissed: boolean }[];
+  /** The course's themes (sub-themes have a parentId). */
+  themes?: { _id: Id<'themes'>; name: string; parentId?: Id<'themes'> }[];
   /** Preselect a thread (from "Quiz me" on a concept). */
-  conceptId?: Id<'concepts'> | null;
+  conceptId?: Id<'concepts'>;
+  /** Preselect a theme (from "Quiz me" on a theme). */
+  themeId?: Id<'themes'>;
 }
 
 const CHECK_IN: Record<string, (label: string) => string> = {
@@ -38,11 +42,17 @@ const CHECK_IN: Record<string, (label: string) => string> = {
 };
 
 /**
- * Nugget's quiz for a course: a thread, a range of sessions or everything.
+ * Nugget's quiz for a course: a theme, a thread, a range of sessions or everything.
  * Your study buddy (Settings → Appearance) asks; every answer shows the lines
  * it came from.
  */
-export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
+export function CourseQuiz({
+  courseId,
+  concepts,
+  themes = [],
+  conceptId,
+  themeId: initialTheme,
+}: CourseQuizProps) {
   const generate = useAction(api.courseQuiz.generate);
   const { settings } = useStudySettings();
   const buddyVariant = isCatVariant(settings?.buddyVariant)
@@ -64,8 +74,12 @@ export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
   );
   const liveConcepts = concepts.filter((c) => !c.dismissed);
 
-  const [kind, setKind] = useState<ScopeKind>(conceptId ? 'thread' : 'course');
+  const topThemes = themes.filter((t) => !t.parentId);
+  const [kind, setKind] = useState<ScopeKind>(
+    conceptId ? 'thread' : initialTheme ? 'theme' : 'course',
+  );
   const [threadId, setThreadId] = useState<Id<'concepts'> | ''>(conceptId ?? '');
+  const [themeId, setThemeId] = useState<Id<'themes'> | ''>(initialTheme ?? '');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [count, setCount] = useState(10);
@@ -80,13 +94,15 @@ export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
     const scope =
       kind === 'thread' && threadId
         ? { kind: 'thread' as const, conceptId: threadId }
-        : kind === 'range' && rangeFrom && rangeTo
-          ? {
-              kind: 'range' as const,
-              from: rangeFrom <= rangeTo ? rangeFrom : rangeTo,
-              to: rangeFrom <= rangeTo ? rangeTo : rangeFrom,
-            }
-          : { kind: 'course' as const };
+        : kind === 'theme' && themeId
+          ? { kind: 'theme' as const, themeId }
+          : kind === 'range' && rangeFrom && rangeTo
+            ? {
+                kind: 'range' as const,
+                from: rangeFrom <= rangeTo ? rangeFrom : rangeTo,
+                to: rangeFrom <= rangeTo ? rangeTo : rangeFrom,
+              }
+            : { kind: 'course' as const };
     setLoading(true);
     setError(null);
     try {
@@ -126,6 +142,7 @@ export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
           {(
             [
               ['course', 'Whole course'],
+              ['theme', 'One theme'],
               ['thread', 'One concept'],
               ['range', 'Some sessions'],
             ] as const
@@ -138,6 +155,7 @@ export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
               onClick={() => setKind(k)}
               disabled={
                 (k === 'thread' && liveConcepts.length === 0) ||
+                (k === 'theme' && topThemes.length === 0) ||
                 (k === 'range' && dates.length === 0)
               }
             >
@@ -145,6 +163,22 @@ export function CourseQuiz({ courseId, concepts, conceptId }: CourseQuizProps) {
             </Button>
           ))}
         </div>
+
+        {kind === 'theme' && (
+          <select
+            className={select}
+            value={themeId}
+            onChange={(e) => setThemeId(e.target.value as Id<'themes'>)}
+            aria-label="Theme"
+          >
+            <option value="">Pick a theme…</option>
+            {topThemes.map((t) => (
+              <option key={t._id} value={t._id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {kind === 'thread' && (
           <select

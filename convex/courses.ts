@@ -72,6 +72,11 @@ export const remove = mutation({
       .withIndex('by_course', (q) => q.eq('courseId', id))
       .collect();
     for (const concept of concepts) await ctx.db.delete(concept._id);
+    const themes = await ctx.db
+      .query('themes')
+      .withIndex('by_course', (q) => q.eq('courseId', id))
+      .collect();
+    for (const theme of themes) await ctx.db.delete(theme._id);
     await ctx.db.delete(id);
   },
 });

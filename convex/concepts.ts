@@ -31,6 +31,7 @@ import {
   sourceLines,
 } from './conceptText';
 import { loadSourcePages } from './sources';
+import { afterSessionRead } from './themes';
 
 const mentionsOfSession = (ctx: QueryCtx, sessionId: Id<'sessions'>) =>
   ctx.db
@@ -145,6 +146,7 @@ export const listForCourse = query({
         kind: c.kind,
         aliases: c.aliases,
         dismissed: c.dismissed,
+        themeId: c.themeId,
         sessionCount,
         where: sessionCount === 1 ? await whereOf(c._id) : undefined,
       });
@@ -233,6 +235,7 @@ export const thread = query({
       kind: concept.kind,
       aliases: concept.aliases,
       dismissed: concept.dismissed,
+      themeId: concept.themeId,
       timeline,
     };
   },
@@ -273,6 +276,8 @@ export const split = mutation({
       aliases: [],
       kind: concept.kind,
       dismissed: false,
+      // Same theme as the concept it came from, until the next grouping.
+      themeId: concept.themeId,
       createdAt: now,
       updatedAt: now,
     });
@@ -452,6 +457,7 @@ export const markReadFailed = internalMutation({
     const session = await ctx.db.get(sessionId);
     if (session?.conceptsQueuedAt === queuedAt) {
       await ctx.db.patch(sessionId, { conceptsStatus: 'failed' });
+      if (session.courseId) await afterSessionRead(ctx, session.courseId);
     }
     if (session?.courseId) await releaseRead(ctx, session.courseId, sessionId, queuedAt);
   },

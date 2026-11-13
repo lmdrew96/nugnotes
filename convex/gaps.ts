@@ -20,6 +20,7 @@ import { loadSessionLines } from './concepts';
 import { formatDateKey } from './dateKey';
 import type { KnownWhisker, OtherLine } from './gapText';
 import { lineRef } from './schema';
+import { afterSessionRead } from './themes';
 
 type LineRef = Infer<typeof lineRef>;
 
@@ -373,5 +374,6 @@ export const saveGaps = internalMutation({
     }
 
     await ctx.db.patch(args.sessionId, { conceptsStatus: 'done' });
+    await afterSessionRead(ctx, courseId);
   },
 });

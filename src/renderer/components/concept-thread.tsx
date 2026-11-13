@@ -21,6 +21,8 @@ interface ConceptThreadProps {
   onGone: () => void;
   /** Start a quiz on this concept. */
   onQuiz?: () => void;
+  /** The course's themes, to move this concept to another. */
+  themes?: { _id: Id<'themes'>; name: string; parentId?: Id<'themes'> }[];
 }
 
 /**
@@ -28,11 +30,18 @@ interface ConceptThreadProps {
  * first, with the student's own lines and a link to the page. Dismiss a wrong
  * concept, or split lines that were merged in by mistake into their own.
  */
-export function ConceptThread({ conceptId, onBack, onGone, onQuiz }: ConceptThreadProps) {
+export function ConceptThread({
+  conceptId,
+  onBack,
+  onGone,
+  onQuiz,
+  themes = [],
+}: ConceptThreadProps) {
   const navigate = useNavigate();
   const thread = useQuery(api.concepts.thread, { conceptId });
   const setDismissed = useMutation(api.concepts.setDismissed);
   const split = useMutation(api.concepts.split);
+  const moveConcept = useMutation(api.themes.moveConcept);
   const [splitting, setSplitting] = useState(false);
   const [picked, setPicked] = useState<Set<Id<'conceptMentions'>>>(new Set());
   const [newName, setNewName] = useState('');
@@ -95,6 +104,32 @@ export function ConceptThread({ conceptId, onBack, onGone, onQuiz }: ConceptThre
               in {sessionCount} session{sessionCount === 1 ? '' : 's'}
               {thread.aliases.length > 0 && <span> · also: {thread.aliases.join(', ')}</span>}
             </p>
+            {themes.length > 0 && !thread.dismissed && (
+              <select
+                className="mt-1 h-7 max-w-full rounded-md border border-[var(--glass-border)] bg-background/60 px-1.5 text-xs text-foreground"
+                value={thread.themeId ?? ''}
+                onChange={(e) =>
+                  void moveConcept({
+                    conceptId,
+                    themeId: e.target.value as Id<'themes'>,
+                  }).catch((error: unknown) =>
+                    toast.error(friendlyError(error, 'Couldn’t move it. Try again.')),
+                  )
+                }
+                aria-label="Theme"
+                title="Move to another theme"
+              >
+                {!thread.themeId && <option value="">Not in a theme</option>}
+                {themes
+                  .filter((t) => !t.parentId)
+                  .flatMap((t) => [t, ...themes.filter((s) => s.parentId === t._id)])
+                  .map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.parentId ? `  ↳ ${t.name}` : `Theme: ${t.name}`}
+                    </option>
+                  ))}
+              </select>
+            )}
           </div>
           <div className="flex shrink-0 gap-1">
             {onQuiz && !thread.dismissed && (

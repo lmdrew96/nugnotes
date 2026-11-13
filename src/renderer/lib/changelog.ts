@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.21.0',
+    date: '2026-11-13',
+    title: 'Themes: the big picture of a course',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Threads now opens on a handful of themes per course (like Memory or Perception), each showing how many threads it has, the sessions it spans and their dates. Tap one to see its threads.',
+      },
+      {
+        kind: 'added',
+        text: 'Rename a theme, move an idea to a different theme, or dismiss a theme that doesn’t fit. Nugget keeps your changes when it regroups after new sessions.',
+      },
+      {
+        kind: 'added',
+        text: 'Quiz yourself on a whole theme, from the theme or the Quiz tab.',
+      },
+    ],
+  },
+  {
     version: '0.20.0',
     date: '2026-11-13',
     title: 'Threads that are actually threads',

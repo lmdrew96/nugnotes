@@ -19,7 +19,7 @@ export interface QuizQuestion {
 export const buildQuizPrompt = (opts: {
   courseName: string;
   scope: string;
-  focus?: { name: string; aliases: string[] };
+  focus?: { name: string; aliases: string[]; ideas?: string[] };
   lines: RefLine[];
   count: number;
 }): string => {
@@ -31,9 +31,11 @@ export const buildQuizPrompt = (opts: {
     if (used > MAX_INPUT_CHARS) break;
     out.push(row);
   }
-  const focus = opts.focus
-    ? `\nEvery question must be about "${opts.focus.name}"${opts.focus.aliases.length ? ` (also written: ${opts.focus.aliases.join(', ')})` : ''}: what it is, how it works, examples, how it connects to other ideas in the lines.`
-    : '';
+  const focus = opts.focus?.ideas
+    ? `\nEvery question must be about the theme "${opts.focus.name}", which covers: ${opts.focus.ideas.slice(0, 40).join(', ')}. Spread the questions across these ideas and how they connect.`
+    : opts.focus
+      ? `\nEvery question must be about "${opts.focus.name}"${opts.focus.aliases.length ? ` (also written: ${opts.focus.aliases.join(', ')})` : ''}: what it is, how it works, examples, how it connects to other ideas in the lines.`
+      : '';
   return `You write a multiple choice quiz for a student from their own notes for ${opts.courseName} (${opts.scope}). Each line starts with its label. Lines labelled P are the student's handwritten notes; lines labelled S are from readings or slides.
 Marks: ~~crossed out~~ is not content, never use it; [?] is an unreadable word; # and ## are headings.${focus}
 

@@ -1,5 +1,5 @@
 /**
- * Nugget's course quiz: from a thread (one concept), a range of sessions
+ * Nugget's course quiz: from a thread (one concept), a theme, a range of sessions
  * ("Weeks 6–10") or the whole course. Multiple choice questions come from the
  * student's own lines, each pointing back to its page. Open whiskers become
  * "do you know it?" check-ins, built here without Claude: the notes don't hold
@@ -33,7 +33,7 @@ type QuizLine = RefLine & { source: QuizSource };
 interface QuizInput {
   courseName: string;
   scopeLabel: string;
-  focus?: { name: string; aliases: string[] };
+  focus?: { name: string; aliases: string[]; ideas?: string[] };
   lines: QuizLine[];
   whiskers: Doc<'whiskers'>[];
 }
@@ -53,6 +53,7 @@ export interface CourseQuiz {
 const scopeArg = v.union(
   v.object({ kind: v.literal('course') }),
   v.object({ kind: v.literal('thread'), conceptId: v.id('concepts') }),
+  v.object({ kind: v.literal('theme'), themeId: v.id('themes') }),
   v.object({ kind: v.literal('range'), from: v.string(), to: v.string() }),
 );
 
@@ -68,7 +69,7 @@ export const getQuizInput = internalQuery({
         .collect()
     ).filter((s) => !s.isDeleted);
 
-    let focus: { name: string; aliases: string[] } | undefined;
+    let focus: QuizInput['focus'];
     let scopeLabel = 'the whole course';
     if (scope.kind === 'thread') {
       const concept = await ctx.db.get(scope.conceptId);
@@ -83,6 +84,34 @@ export const getQuizInput = internalQuery({
             .collect()
         ).map((m) => m.sessionId),
       );
+      sessions = sessions.filter((s) => ids.has(s._id));
+    } else if (scope.kind === 'theme') {
+      const theme = await ctx.db.get(scope.themeId);
+      if (!theme || theme.courseId !== courseId) return null;
+      const subs = (
+        await ctx.db
+          .query('themes')
+          .withIndex('by_course', (q) => q.eq('courseId', courseId))
+          .collect()
+      ).filter((t) => t.parentId === theme._id);
+      const themeIds = new Set([theme._id, ...subs.map((t) => t._id)]);
+      const concepts = (
+        await ctx.db
+          .query('concepts')
+          .withIndex('by_course', (q) => q.eq('courseId', courseId))
+          .collect()
+      ).filter((c) => !c.dismissed && c.themeId && themeIds.has(c.themeId));
+      focus = { name: theme.name, aliases: [], ideas: concepts.map((c) => c.name) };
+      scopeLabel = `the theme ${theme.name}`;
+      const ids = new Set<Id<'sessions'>>();
+      for (const c of concepts) {
+        for (const m of await ctx.db
+          .query('conceptMentions')
+          .withIndex('by_concept', (q) => q.eq('conceptId', c._id))
+          .collect()) {
+          ids.add(m.sessionId);
+        }
+      }
       sessions = sessions.filter((s) => ids.has(s._id));
     } else if (scope.kind === 'range') {
       sessions = sessions.filter(
