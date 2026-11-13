@@ -33,7 +33,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.23.0',
+    version: '0.23.1',
+    label: '0.23.0 – 0.23.1',
     date: '2026-11-13',
     title: 'Nugget reads your actual pages',
     changes: [
@@ -44,6 +45,10 @@ export const CHANGELOG: ChangelogEntry[] = [
       {
         kind: 'improved',
         text: 'When there are too many pages to send at once, Nugget picks the ones most about the topic and tells you how many it read.',
+      },
+      {
+        kind: 'improved',
+        text: 'NugNotes is no longer open source, so Settings no longer links to its code. Reporting a bug works the same as before.',
       },
     ],
   },

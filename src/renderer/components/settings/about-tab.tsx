@@ -1,4 +1,4 @@
-import { Bug, ChevronRight, ExternalLink, FileText, Github, Palette, Shield } from 'lucide-react';
+import { Bug, ChevronRight, ExternalLink, FileText, Palette, Shield } from 'lucide-react';
 import packageJson from '../../../../package.json';
 
 interface AboutTabProps {
@@ -34,15 +34,6 @@ export function AboutTab({ onShowTos, onShowPrivacy, onShowWhatsNew }: AboutTabP
       </p>
 
       <div className="space-y-2">
-        <button
-          type="button"
-          className="flex items-center gap-2 text-sm text-accent hover:underline"
-          onClick={() => window.open('https://github.com/lmdrew96/nugnotes', '_blank')}
-        >
-          <Github className="h-4 w-4" />
-          Open source (AGPL-3.0) — view the code
-          <ExternalLink className="h-3 w-3" />
-        </button>
         <button
           type="button"
           className="flex items-center gap-2 text-sm text-accent hover:underline"

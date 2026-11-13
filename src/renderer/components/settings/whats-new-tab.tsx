@@ -80,20 +80,6 @@ export function WhatsNewTab({ previouslySeenVersion }: WhatsNewTabProps) {
           <p className="text-sm text-muted-foreground">
             Everything that's changed in NugNotes, newest first.
           </p>
-          {/* NugNotes is AGPL-licensed (LICENSE), which asks that everyone who
-              uses the app can get its source. */}
-          <p className="mt-1 text-xs text-muted-foreground">
-            NugNotes is open source —{' '}
-            <a
-              href="https://github.com/lmdrew96/nugnotes"
-              target="_blank"
-              rel="noreferrer"
-              className="text-accent hover:underline"
-            >
-              view the code on GitHub
-            </a>
-            .
-          </p>
         </div>
       </div>
 

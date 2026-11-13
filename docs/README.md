@@ -31,4 +31,4 @@ Copy `.env.example` to `.env.local` for the client variables. Server variables (
 
 ## License
 
-AGPL-3.0 — see [LICENSE](../LICENSE). The notes editor, BlockNote, is MPL-2.0; the editor fonts in `assets/editor-fonts/` are OFL (licenses beside each file).
+All rights reserved — see [LICENSE](../LICENSE). NugNotes is not open source. Releases before Nov 13, 2026 were AGPL-3.0. Third-party packages keep their own (permissive) licenses.
