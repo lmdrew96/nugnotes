@@ -13,6 +13,7 @@ import type * as apiKeys from "../apiKeys.js";
 import type * as authHelpers from "../authHelpers.js";
 import type * as blocks from "../blocks.js";
 import type * as conceptExtract from "../conceptExtract.js";
+import type * as conceptQueue from "../conceptQueue.js";
 import type * as conceptText from "../conceptText.js";
 import type * as concepts from "../concepts.js";
 import type * as config from "../config.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   authHelpers: typeof authHelpers;
   blocks: typeof blocks;
   conceptExtract: typeof conceptExtract;
+  conceptQueue: typeof conceptQueue;
   conceptText: typeof conceptText;
   concepts: typeof concepts;
   config: typeof config;

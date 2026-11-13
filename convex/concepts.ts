@@ -2,7 +2,10 @@
  * Concepts and threads within a course. After a session's pages are read (or a
  * source's PDF), Claude lists its concepts against the course's known ones
  * (convex/conceptExtract.ts); each concept is backed by the lines that mention
- * it. A thread is one concept's mentions across sessions, in class-date order.
+ * it. A thread is one concept's mentions across 2+ sessions, in class-date
+ * order; a concept in only one session is a glossary entry, and becomes a
+ * thread when a second session mentions it. A course's sessions are read one at
+ * a time, oldest class first (pump), so each read merges into what came before.
  * No manual linking: the student dismisses wrong concepts or splits bad merges.
  */
 import { ConvexError, v } from 'convex/values';
@@ -17,11 +20,17 @@ import {
   query,
 } from './_generated/server';
 import { requireAuth } from './authHelpers';
-import { type KnownConcept, type RefLine, classLines, nameKey, sourceLines } from './conceptText';
+import { queueConcepts, releaseRead } from './conceptQueue';
+import {
+  type KnownConcept,
+  type RefLine,
+  classLines,
+  isAbbreviation,
+  matchKeys,
+  nameKey,
+  sourceLines,
+} from './conceptText';
 import { loadSourcePages } from './sources';
-
-/** Wait before reading, so pages still finishing in the same batch join one read. */
-const READ_DELAY_MS = 20_000;
 
 const mentionsOfSession = (ctx: QueryCtx, sessionId: Id<'sessions'>) =>
   ctx.db
@@ -59,31 +68,6 @@ export const deleteSessionConcepts = async (
     ctx,
     mentions.map((m) => m.conceptId),
   );
-};
-
-/** Queue a concept read of a session. A later queue supersedes an earlier one. */
-export const queueConcepts = async (ctx: MutationCtx, sessionId: Id<'sessions'>) => {
-  const session = await ctx.db.get(sessionId);
-  if (!session?.courseId || session.isDeleted) return;
-  const queuedAt = Date.now();
-  await ctx.db.patch(sessionId, { conceptsStatus: 'pending', conceptsQueuedAt: queuedAt });
-  await ctx.scheduler.runAfter(READ_DELAY_MS, internal.conceptExtract.read, {
-    sessionId,
-    queuedAt,
-  });
-};
-
-/** Queue a read once none of a class session's pages are still being read. */
-export const queueConceptsWhenPagesRead = async (
-  ctx: MutationCtx,
-  sessionId: Id<'sessions'>,
-): Promise<void> => {
-  const pending = await ctx.db
-    .query('pages')
-    .withIndex('by_session_order', (q) => q.eq('sessionId', sessionId))
-    .filter((q) => q.eq(q.field('transcriptStatus'), 'pending'))
-    .first();
-  if (!pending) await queueConcepts(ctx, sessionId);
 };
 
 /** A session's lines, labelled for Claude to cite (class pages or source PDF pages). */
@@ -133,23 +117,39 @@ export const listForCourse = query({
       .withIndex('by_course', (q) => q.eq('courseId', courseId))
       .collect();
     const sessionsOf = new Map<Id<'concepts'>, Set<Id<'sessions'>>>();
+    const firstOf = new Map<Id<'concepts'>, Doc<'conceptMentions'>>();
     for (const m of mentions) {
       if (!live.has(m.sessionId)) continue;
       const set = sessionsOf.get(m.conceptId) ?? new Set();
       set.add(m.sessionId);
       sessionsOf.set(m.conceptId, set);
+      if (!firstOf.has(m.conceptId)) firstOf.set(m.conceptId, m);
     }
-    const concepts = (await conceptsOfCourse(ctx, courseId))
-      .map((c) => ({
+    const sessionById = new Map(sessions.map((s) => [s._id, s]));
+    /** Where a glossary entry (one session) is, so it can open its page. */
+    const whereOf = async (conceptId: Id<'concepts'>) => {
+      const m = firstOf.get(conceptId);
+      const session = m && sessionById.get(m.sessionId);
+      if (!m || !session) return undefined;
+      let page = m.sourcePage;
+      if (m.pageId) page = (await ctx.db.get(m.pageId))?.order;
+      return { sessionId: m.sessionId, page, classDate: session.classDate, title: session.title };
+    };
+    const concepts = [];
+    for (const c of await conceptsOfCourse(ctx, courseId)) {
+      const sessionCount = sessionsOf.get(c._id)?.size ?? 0;
+      if (!c.dismissed && sessionCount === 0) continue;
+      concepts.push({
         _id: c._id,
         name: c.name,
         kind: c.kind,
         aliases: c.aliases,
         dismissed: c.dismissed,
-        sessionCount: sessionsOf.get(c._id)?.size ?? 0,
-      }))
-      .filter((c) => c.dismissed || c.sessionCount > 0)
-      .sort((a, b) => b.sessionCount - a.sessionCount || a.name.localeCompare(b.name));
+        sessionCount,
+        where: sessionCount === 1 ? await whereOf(c._id) : undefined,
+      });
+    }
+    concepts.sort((a, b) => b.sessionCount - a.sessionCount || a.name.localeCompare(b.name));
     return {
       courseName: course.name,
       concepts,
@@ -311,6 +311,18 @@ export const readCourse = mutation({
         s.conceptsStatus !== 'pending' &&
         (all || s.conceptsStatus === undefined || s.conceptsStatus === 'failed'),
     );
+    if (all) {
+      // Start the course's concepts over, so earlier misreads and duplicates
+      // don't steer the new reads. Dismissed concepts stay, so they stay dismissed.
+      const mentions = await ctx.db
+        .query('conceptMentions')
+        .withIndex('by_course', (q) => q.eq('courseId', courseId))
+        .collect();
+      for (const m of mentions) await ctx.db.delete(m._id);
+      for (const c of await conceptsOfCourse(ctx, courseId)) {
+        if (!c.dismissed) await ctx.db.delete(c._id);
+      }
+    }
     for (const s of unread) await queueConcepts(ctx, s._id);
     return unread.length;
   },
@@ -364,22 +376,31 @@ export const saveRead = internalMutation({
   handler: async (ctx, { sessionId, queuedAt, concepts }): Promise<void> => {
     const session = await ctx.db.get(sessionId);
     const courseId = session?.courseId;
-    if (!session || !courseId || session.conceptsQueuedAt !== queuedAt) return;
+    if (!session || !courseId) return;
+    await releaseRead(ctx, courseId, sessionId, queuedAt);
+    if (session.conceptsQueuedAt !== queuedAt) return; // superseded
 
     // A re-read replaces this session's mentions.
     const old = await mentionsOfSession(ctx, sessionId);
     for (const m of old) await ctx.db.delete(m._id);
 
     const course = await conceptsOfCourse(ctx, courseId);
+    // Every wording of every concept, matched loosely (case, hyphens, plurals,
+    // "Name (ABBR)"), so the same idea in another form lands on the same concept.
     const byKey = new Map<string, Doc<'concepts'>>();
-    for (const c of course) {
-      for (const n of [c.name, ...c.aliases]) byKey.set(nameKey(n), c);
-    }
+    const index = (c: Doc<'concepts'>) => {
+      for (const n of [c.name, ...c.aliases]) for (const k of matchKeys(n)) byKey.set(k, c);
+    };
+    for (const c of course) index(c);
     const now = Date.now();
     for (const item of concepts) {
       const existing =
         (item.existingId && course.find((c) => c._id === item.existingId)) ||
-        byKey.get(nameKey(item.name));
+        // By its name or an abbreviation; a looser alias ("memory" for "working
+        // memory") could pull in a different concept.
+        [item.name, ...item.aliases.filter(isAbbreviation)]
+          .flatMap(matchKeys)
+          .flatMap((k) => byKey.get(k) ?? [])[0];
       let conceptId: Id<'concepts'>;
       if (existing) {
         conceptId = existing._id;
@@ -402,8 +423,7 @@ export const saveRead = internalMutation({
           updatedAt: now,
         });
         const created = await ctx.db.get(conceptId);
-        if (created)
-          for (const n of [created.name, ...created.aliases]) byKey.set(nameKey(n), created);
+        if (created) index(created);
       }
       for (const m of item.mentions) {
         await ctx.db.insert('conceptMentions', {
@@ -433,5 +453,6 @@ export const markReadFailed = internalMutation({
     if (session?.conceptsQueuedAt === queuedAt) {
       await ctx.db.patch(sessionId, { conceptsStatus: 'failed' });
     }
+    if (session?.courseId) await releaseRead(ctx, session.courseId, sessionId, queuedAt);
   },
 });

@@ -8,7 +8,8 @@ import {
   query,
 } from './_generated/server';
 import { requireAuth } from './authHelpers';
-import { deleteSessionConcepts, queueConcepts } from './concepts';
+import { queueConcepts } from './conceptQueue';
+import { deleteSessionConcepts } from './concepts';
 import { formatDateKey, isDateKey } from './dateKey';
 import { deleteSessionGaps } from './gaps';
 import { deleteAllPages } from './pages';

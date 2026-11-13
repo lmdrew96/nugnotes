@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import type { Doc, Id } from './_generated/dataModel';
 import { type MutationCtx, type QueryCtx, mutation, query } from './_generated/server';
 import { requireAuth } from './authHelpers';
-import { queueConcepts } from './concepts';
+import { queueConcepts } from './conceptQueue';
 import { r2 } from './r2';
 import { queueTranscription } from './transcribe';
 import type { TranscriptLine } from './transcriptText';

@@ -17,7 +17,7 @@ import {
   query,
 } from './_generated/server';
 import { requireAuth } from './authHelpers';
-import { queueConcepts } from './concepts';
+import { queueConcepts } from './conceptQueue';
 import { isDateKey } from './dateKey';
 import { r2 } from './r2';
 

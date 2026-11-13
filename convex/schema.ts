@@ -17,6 +17,12 @@ export default defineSchema({
     userId: v.string(),
     name: v.string(),
     createdAt: v.number(),
+    // The session whose concept read is running. A course's sessions are read
+    // for concepts one at a time, oldest class first, so each read knows the
+    // concepts found before it (convex/concepts.ts pump).
+    conceptsLock: v.optional(
+      v.object({ sessionId: v.id('sessions'), queuedAt: v.number(), startedAt: v.number() }),
+    ),
   }).index('by_user', ['userId']),
 
   // Study sessions: one class meeting (page photos), or an older typed/uploaded session
@@ -60,6 +66,8 @@ export default defineSchema({
       v.union(v.literal('pending'), v.literal('done'), v.literal('failed')),
     ),
     conceptsQueuedAt: v.optional(v.number()),
+    // The conceptsQueuedAt whose read has been started (equal = not waiting).
+    conceptsDispatchedAt: v.optional(v.number()),
   })
     .index('by_user', ['userId'])
     .index('by_user_deleted', ['userId', 'isDeleted'])

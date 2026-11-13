@@ -92,7 +92,14 @@ export const buildConceptPrompt = (opts: {
   const tag = opts.isSource ? 'source' : 'session';
   return `You map the ideas in a student's notes for one course. You read one ${what} and list the concepts in it, each backed by the lines that mention it. You never write summaries, definitions or explanations.
 
-A concept is something the course is about that could come up again in another session: a term, a person, a theory or model, a study or example, a date or historical event. Not concepts: the class's own date, logistics (homework, exams, room changes), and everyday words.
+A concept is something the course is about that could come up again in another session: a term, a person, a theory or model, a study or case, a date or historical event.
+
+Not concepts, so leave them out:
+- figure, table, slide or page numbers and captions ("Figure 7.14", "Table 2")
+- textbook box and section labels ("Pitfall", "Try this", "Key terms", "Summary")
+- one-off asides, jokes, anecdotes and stories ("jumping into cold water", "pandemic Zooms")
+- examples or cases that the lines don't tie to a concept. A case tied to one counts (H.M. → amnesia).
+- the class's own date, logistics (homework, exams, room changes), and everyday words
 
 Concepts already in this course:
 ${describeKnown(opts.known)}
@@ -107,8 +114,9 @@ Reply with JSON only, no code fences:
 {"concepts":[{"name":"…","kind":"term|person|theory|example|date|other","existing":"C3 or null","aliases":["…"],"lines":["P1.2","P1.4"]}]}
 
 Rules:
-- If a concept is the same idea as one already in the course, even in different wording, an abbreviation or shorthand ("neg. reinforcement" and "negative reinforcement"), set existing to its label and put the new wording in aliases. Only merge when it really is the same idea, not merely related.
-- name (new concepts): the clearest full form these lines use, in their words, at most 6 words. Never invent a term the lines don't use.
+- If a concept is the same idea as one already in the course, set existing to its label and put the new wording in aliases. The same idea includes: an abbreviation and its full form ("LTM", "long-term memory"), singular and plural, hyphenated or spaced ("long term memory"), shorthand ("neg. reinforcement"), and a name with its abbreviation in parentheses ("Long Term Memory (LTM)"). Only merge when it really is the same idea, not merely related: "memory" and "long-term memory" are two concepts.
+- Never list the same idea twice in one reply.
+- name (new concepts): the clearest full form these lines use, in their words, at most 6 words, without a parenthesized abbreviation (put that in aliases). Never invent a term the lines don't use.
 - aliases: other names or abbreviations these lines use for it (a few words each, never a whole line). Can be empty.
 - lines: labels of the lines that mention it, at most ${MAX_LINES_PER_CONCEPT}. Only labels from the list.
 - At most ${MAX_CONCEPTS} concepts; if there are more, leave out the least important.`;
@@ -152,7 +160,8 @@ export const parseConcepts = (
   const out: ExtractedConcept[] = [];
   for (const item of parsed.concepts.slice(0, MAX_CONCEPTS)) {
     if (!isRecord(item) || typeof item.name !== 'string') continue;
-    const name = item.name.trim().slice(0, 80);
+    const { name, abbreviation } = splitAbbreviation(item.name.trim().slice(0, 80));
+    if (isNoise(name)) continue;
     const refs = [...new Set(strings(item.lines))].slice(0, MAX_LINES_PER_CONCEPT);
     const found = refs.flatMap((ref) => byRef.get(ref.replace(/[[\]]/g, '').trim()) ?? []);
     if (!name || found.length === 0) continue;
@@ -161,7 +170,7 @@ export const parseConcepts = (
       typeof item.existing === 'string' && knownKeys.has(item.existing.trim())
         ? item.existing.trim()
         : null;
-    const aliases = strings(item.aliases)
+    const aliases = [...(abbreviation ? [abbreviation] : []), ...strings(item.aliases)]
       .map((a) => a.trim().slice(0, 80))
       .filter((a) => a && a.toLowerCase() !== name.toLowerCase());
     out.push({ name, kind, existing, aliases, lines: found });
@@ -172,3 +181,45 @@ export const parseConcepts = (
 /** Case- and space-insensitive key for matching names and aliases. */
 export const nameKey = (name: string): string =>
   name.trim().toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ');
+
+/** "Long Term Memory (LTM)" → name "Long Term Memory", abbreviation "LTM". */
+export const splitAbbreviation = (text: string): { name: string; abbreviation?: string } => {
+  const m = text.match(/^(.+?)\s*\(([^()]+)\)\s*$/);
+  if (m && isAbbreviation(m[2])) return { name: m[1].trim(), abbreviation: m[2].trim() };
+  return { name: text };
+};
+
+/** Looks like an abbreviation: LTM, STM, CS, UCRs, A.B.C. */
+export const isAbbreviation = (text: string): boolean =>
+  /^[A-Z][A-Z0-9&.]{1,7}s?$/.test(text.trim());
+
+/** Figure/table/slide/page labels: never a concept, whatever the reply says. */
+export const isNoise = (name: string): boolean =>
+  /^(fig(ure)?|table|tbl|slide|chart|page|p)\.?\s*\d/i.test(name.trim()) || !/[a-z]/i.test(name);
+
+/** Plural to singular for matching only: "memories" → "memory", "schemas" → "schema". */
+const singular = (word: string): string => {
+  if (word.length <= 3) return word;
+  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`;
+  if (/(ss|us|is)$/.test(word)) return word;
+  return word.endsWith('s') ? word.slice(0, -1) : word;
+};
+
+/**
+ * The keys one wording of a concept matches on, loosely: case, punctuation,
+ * hyphens and a final plural don't count, and "Name (ABBR)" matches both
+ * "Name" and "ABBR". Two wordings sharing a key are the same concept.
+ */
+export const matchKeys = (text: string): string[] => {
+  const { name, abbreviation } = splitAbbreviation(text.trim());
+  const norm = (s: string) =>
+    nameKey(s)
+      .replace(/[-‐–—_/]/g, ' ')
+      .replace(/[.,;:!?'"()]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .map(singular)
+      .join(' ');
+  return [...new Set([name, abbreviation].flatMap((s) => (s ? [norm(s)] : [])))].filter(Boolean);
+};

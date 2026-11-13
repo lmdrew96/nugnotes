@@ -13,7 +13,11 @@ export const read = internalAction({
   args: { sessionId: v.id('sessions'), queuedAt: v.number() },
   handler: async (ctx, { sessionId, queuedAt }): Promise<void> => {
     const input = await ctx.runQuery(internal.concepts.getReadInput, { sessionId, queuedAt });
-    if (!input) return; // superseded, deleted, or no course
+    if (!input) {
+      // Superseded, deleted, or no course: let the course's next read start.
+      await ctx.runMutation(internal.conceptQueue.skipRead, { sessionId, queuedAt });
+      return;
+    }
     try {
       if (input.lines.length === 0) {
         await ctx.runMutation(internal.concepts.saveRead, { sessionId, queuedAt, concepts: [] });

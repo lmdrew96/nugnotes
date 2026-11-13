@@ -33,6 +33,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.20.0',
+    date: '2026-11-13',
+    title: 'Threads that are actually threads',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Threads now only lists ideas that come up in two or more sessions. Terms from a single session move to a new A–Z Glossary below them, and one search box finds both.',
+      },
+      {
+        kind: 'added',
+        text: 'Glossary terms open straight to the page they’re on, and turn into threads on their own once a later session mentions them.',
+      },
+      {
+        kind: 'improved',
+        text: 'Nugget reads a course’s sessions in order, so the same idea in different wording (LTM, long-term memory) ends up as one thread. Figure numbers, textbook boxes and one-off stories are left out.',
+      },
+      {
+        kind: 'improved',
+        text: 'Read all again now rebuilds a course’s threads from scratch. Anything you dismissed stays dismissed.',
+      },
+    ],
+  },
+  {
     version: '0.19.0',
     date: '2026-11-13',
     title: 'Your pages, not Nugget’s typing',

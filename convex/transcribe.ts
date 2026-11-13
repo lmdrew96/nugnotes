@@ -7,7 +7,7 @@ import {
   internalMutation,
   internalQuery,
 } from './_generated/server';
-import { queueConceptsWhenPagesRead } from './concepts';
+import { queueConceptsWhenPagesRead } from './conceptQueue';
 import { AI_MODEL_SONNET, callClaude } from './config';
 import { r2 } from './r2';
 import { TRANSCRIBE_PROMPT, toTranscriptLines } from './transcriptText';
