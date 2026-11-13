@@ -15,6 +15,7 @@ import {
   mutation,
   query,
 } from './_generated/server';
+import { queueArcs } from './arcs';
 import { requireAuth } from './authHelpers';
 import type { ExistingTheme, ThemeConcept } from './themeText';
 
@@ -59,7 +60,10 @@ export const queueThemes = async (ctx: MutationCtx, courseId: Id<'courses'>): Pr
   await ctx.scheduler.runAfter(GROUP_DELAY_MS, internal.themeGroup.group, { courseId, queuedAt });
 };
 
-/** A session's read finished (or failed): regroup once the course has none left reading. */
+/**
+ * A session's read finished (or failed): once the course has none left
+ * reading, regroup its themes and rewrite the arcs of threads that changed.
+ */
 export const afterSessionRead = async (
   ctx: MutationCtx,
   courseId: Id<'courses'>,
@@ -71,7 +75,10 @@ export const afterSessionRead = async (
       q.and(q.eq(q.field('conceptsStatus'), 'pending'), q.neq(q.field('isDeleted'), true)),
     )
     .first();
-  if (!reading) await queueThemes(ctx, courseId);
+  if (!reading) {
+    await queueThemes(ctx, courseId);
+    await queueArcs(ctx, courseId);
+  }
 };
 
 const requireOwnCourse = async (ctx: QueryCtx, courseId: Id<'courses'>) => {

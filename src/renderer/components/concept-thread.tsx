@@ -1,4 +1,5 @@
 import { TranscriptLineView } from '@/components/page-transcript';
+import { ThreadArc, ThreadConnections } from '@/components/thread-links';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,6 +24,8 @@ interface ConceptThreadProps {
   onQuiz?: () => void;
   /** The course's themes, to move this concept to another. */
   themes?: { _id: Id<'themes'>; name: string; parentId?: Id<'themes'> }[];
+  /** Open another thread (from "Connects to"). */
+  onOpenConcept?: (id: Id<'concepts'>) => void;
 }
 
 /**
@@ -36,6 +39,7 @@ export function ConceptThread({
   onGone,
   onQuiz,
   themes = [],
+  onOpenConcept,
 }: ConceptThreadProps) {
   const navigate = useNavigate();
   const thread = useQuery(api.concepts.thread, { conceptId });
@@ -204,6 +208,17 @@ export function ConceptThread({
       </header>
 
       <ScrollArea className="min-h-0 flex-1">
+        {!thread.dismissed && (
+          <div className="flex flex-col gap-3 px-4 pt-4 empty:hidden">
+            <ThreadArc arc={thread.arc} />
+            <ThreadConnections
+              conceptId={conceptId}
+              themeId={thread.themeId}
+              themes={themes}
+              onOpenConcept={onOpenConcept}
+            />
+          </div>
+        )}
         <ol className="flex flex-col gap-4 p-4">
           {thread.timeline.map((group) => (
             <li key={group.sessionId} className="relative border-l-2 border-primary/40 pl-4">

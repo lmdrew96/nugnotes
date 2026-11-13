@@ -30,8 +30,9 @@ import {
   nameKey,
   sourceLines,
 } from './conceptText';
+import { formatDateKey } from './dateKey';
+import { dropEdges, removeSessionEvidence, saveSessionEdges } from './edges';
 import { loadSourcePages } from './sources';
-import { afterSessionRead } from './themes';
 
 const mentionsOfSession = (ctx: QueryCtx, sessionId: Id<'sessions'>) =>
   ctx.db
@@ -54,7 +55,10 @@ const dropOrphans = async (ctx: MutationCtx, conceptIds: Iterable<Id<'concepts'>
       .query('conceptMentions')
       .withIndex('by_concept', (q) => q.eq('conceptId', id))
       .first();
-    if (!any) await ctx.db.delete(id);
+    if (!any) {
+      await ctx.db.delete(id);
+      await dropEdges(ctx, concept.courseId, new Set([id]));
+    }
   }
 };
 
@@ -65,6 +69,8 @@ export const deleteSessionConcepts = async (
 ): Promise<void> => {
   const mentions = await mentionsOfSession(ctx, sessionId);
   for (const m of mentions) await ctx.db.delete(m._id);
+  const courseId = mentions[0]?.courseId;
+  if (courseId) await removeSessionEvidence(ctx, courseId, sessionId);
   await dropOrphans(
     ctx,
     mentions.map((m) => m.conceptId),
@@ -228,9 +234,22 @@ export const thread = query({
         (a, b) => (a.pageIndex ?? a.sourcePage ?? 0) - (b.pageIndex ?? b.sourcePage ?? 0),
       );
     }
+    // The arc's cites, as dates that open the page.
+    const arcCites = [];
+    for (const c of concept.arc?.cites ?? []) {
+      const session = sessions.get(c.sessionId) ?? (await ctx.db.get(c.sessionId));
+      if (!session || session.isDeleted) continue;
+      const page = c.pageId ? (pages.get(c.pageId) ?? (await ctx.db.get(c.pageId))) : null;
+      arcCites.push({
+        sessionId: c.sessionId,
+        date: session.classDate ? formatDateKey(session.classDate) : session.title,
+        page: page ? page.order : c.sourcePage,
+      });
+    }
     return {
       _id: concept._id,
       courseId: concept.courseId,
+      arc: concept.arc ? { text: concept.arc.text, cites: arcCites } : undefined,
       name: concept.name,
       kind: concept.kind,
       aliases: concept.aliases,
@@ -327,6 +346,7 @@ export const readCourse = mutation({
       for (const c of await conceptsOfCourse(ctx, courseId)) {
         if (!c.dismissed) await ctx.db.delete(c._id);
       }
+      await dropEdges(ctx, courseId);
     }
     for (const s of unread) await queueConcepts(ctx, s._id);
     return unread.length;
@@ -377,8 +397,12 @@ export const saveRead = internalMutation({
         mentions: v.array(mentionArg),
       }),
     ),
+    // Connections between this read's concepts (positions in `concepts`).
+    links: v.array(
+      v.object({ a: v.number(), b: v.number(), how: v.string(), lines: v.array(mentionArg) }),
+    ),
   },
-  handler: async (ctx, { sessionId, queuedAt, concepts }): Promise<void> => {
+  handler: async (ctx, { sessionId, queuedAt, concepts, links }): Promise<void> => {
     const session = await ctx.db.get(sessionId);
     const courseId = session?.courseId;
     if (!session || !courseId) return;
@@ -388,6 +412,7 @@ export const saveRead = internalMutation({
     // A re-read replaces this session's mentions.
     const old = await mentionsOfSession(ctx, sessionId);
     for (const m of old) await ctx.db.delete(m._id);
+    await removeSessionEvidence(ctx, courseId, sessionId);
 
     const course = await conceptsOfCourse(ctx, courseId);
     // Every wording of every concept, matched loosely (case, hyphens, plurals,
@@ -398,6 +423,8 @@ export const saveRead = internalMutation({
     };
     for (const c of course) index(c);
     const now = Date.now();
+    /** Where each of this read's concepts landed, for its links. */
+    const saved: { id: Id<'concepts'>; name: string }[] = [];
     for (const item of concepts) {
       const existing =
         (item.existingId && course.find((c) => c._id === item.existingId)) ||
@@ -430,6 +457,7 @@ export const saveRead = internalMutation({
         const created = await ctx.db.get(conceptId);
         if (created) index(created);
       }
+      saved.push({ id: conceptId, name: existing ? existing.name : item.name });
       for (const m of item.mentions) {
         await ctx.db.insert('conceptMentions', {
           userId: session.userId,
@@ -441,6 +469,17 @@ export const saveRead = internalMutation({
         });
       }
     }
+    await saveSessionEdges(ctx, {
+      userId: session.userId,
+      courseId,
+      links: links.flatMap((l) => {
+        const a = saved[l.a];
+        const b = saved[l.b];
+        return a && b
+          ? [{ a, b, how: l.how, evidence: l.lines.map((m) => ({ sessionId, ...m })) }]
+          : [];
+      }),
+    });
     await dropOrphans(
       ctx,
       old.map((m) => m.conceptId),
@@ -448,17 +487,5 @@ export const saveRead = internalMutation({
     // Next in the same read: whiskers and contradictions (convex/gaps.ts), which
     // marks the read done.
     await ctx.scheduler.runAfter(0, internal.gapExtract.read, { sessionId, queuedAt });
-  },
-});
-
-export const markReadFailed = internalMutation({
-  args: { sessionId: v.id('sessions'), queuedAt: v.number() },
-  handler: async (ctx, { sessionId, queuedAt }): Promise<void> => {
-    const session = await ctx.db.get(sessionId);
-    if (session?.conceptsQueuedAt === queuedAt) {
-      await ctx.db.patch(sessionId, { conceptsStatus: 'failed' });
-      if (session.courseId) await afterSessionRead(ctx, session.courseId);
-    }
-    if (session?.courseId) await releaseRead(ctx, session.courseId, sessionId, queuedAt);
   },
 });

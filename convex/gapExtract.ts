@@ -65,7 +65,7 @@ export const read = internalAction({
       });
     } catch (error) {
       console.error(`[gaps] ${sessionId} failed:`, error);
-      await ctx.runMutation(internal.concepts.markReadFailed, { sessionId, queuedAt });
+      await ctx.runMutation(internal.conceptQueue.markReadFailed, { sessionId, queuedAt });
     }
   },
 });

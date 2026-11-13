@@ -208,6 +208,7 @@ function CourseThreads({ courseId }: { courseId: Id<'courses'> }) {
       onBack={isMobile ? () => setSelected(null) : undefined}
       onGone={() => setSelected(null)}
       themes={themes?.themes ?? []}
+      onOpenConcept={setSelected}
       onQuiz={() => {
         setQuizScope({ conceptId: selected });
         setTab('quiz');

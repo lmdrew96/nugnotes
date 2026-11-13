@@ -10,6 +10,9 @@
 
 import type * as ai from "../ai.js";
 import type * as apiKeys from "../apiKeys.js";
+import type * as arcText from "../arcText.js";
+import type * as arcWrite from "../arcWrite.js";
+import type * as arcs from "../arcs.js";
 import type * as authHelpers from "../authHelpers.js";
 import type * as blocks from "../blocks.js";
 import type * as conceptExtract from "../conceptExtract.js";
@@ -21,6 +24,7 @@ import type * as courseQuiz from "../courseQuiz.js";
 import type * as courses from "../courses.js";
 import type * as crons from "../crons.js";
 import type * as dateKey from "../dateKey.js";
+import type * as edges from "../edges.js";
 import type * as examBrain from "../examBrain.js";
 import type * as examChat from "../examChat.js";
 import type * as examGames from "../examGames.js";
@@ -75,6 +79,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   apiKeys: typeof apiKeys;
+  arcText: typeof arcText;
+  arcWrite: typeof arcWrite;
+  arcs: typeof arcs;
   authHelpers: typeof authHelpers;
   blocks: typeof blocks;
   conceptExtract: typeof conceptExtract;
@@ -86,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   courses: typeof courses;
   crons: typeof crons;
   dateKey: typeof dateKey;
+  edges: typeof edges;
   examBrain: typeof examBrain;
   examChat: typeof examChat;
   examGames: typeof examGames;

@@ -33,6 +33,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.22.0',
+    date: '2026-11-13',
+    title: 'See how your ideas connect',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Each thread now lists what it connects to, like “H.M. is a case of amnesia,” with the dates and pages where your notes make that link. Links that cross into another theme are highlighted.',
+      },
+      {
+        kind: 'added',
+        text: 'Each thread gets a one-line arc from Nugget on how the idea moved through the course (“introduced Oct 14, came back as a study strategy Oct 21”). Tap a date to open that page.',
+      },
+      {
+        kind: 'added',
+        text: 'Dismiss a connection that’s wrong, and it stays gone when sessions are read again.',
+      },
+    ],
+  },
+  {
     version: '0.21.0',
     date: '2026-11-13',
     title: 'Themes: the big picture of a course',

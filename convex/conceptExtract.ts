@@ -6,7 +6,7 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
 import { internalAction } from './_generated/server';
-import { buildConceptPrompt, parseConcepts } from './conceptText';
+import { type RefLine, buildConceptPrompt, parseConcepts, parseLinks } from './conceptText';
 import { AI_MODEL_SONNET, callClaude } from './config';
 
 export const read = internalAction({
@@ -20,7 +20,12 @@ export const read = internalAction({
     }
     try {
       if (input.lines.length === 0) {
-        await ctx.runMutation(internal.concepts.saveRead, { sessionId, queuedAt, concepts: [] });
+        await ctx.runMutation(internal.concepts.saveRead, {
+          sessionId,
+          queuedAt,
+          concepts: [],
+          links: [],
+        });
         return;
       }
       const reply = await callClaude({
@@ -33,6 +38,12 @@ export const read = internalAction({
       });
       const byKey = new Map(input.known.map((c) => [c.key, c.id]));
       const found = parseConcepts(reply, input.lines, new Set(byKey.keys()));
+      const toMention = (l: RefLine) => ({
+        pageId: l.pageId as Id<'pages'> | undefined,
+        sourcePage: l.sourcePage,
+        line: l.line,
+        quote: l.text,
+      });
       await ctx.runMutation(internal.concepts.saveRead, {
         sessionId,
         queuedAt,
@@ -41,17 +52,18 @@ export const read = internalAction({
           name: c.name,
           kind: c.kind,
           aliases: c.aliases,
-          mentions: c.lines.map((l) => ({
-            pageId: l.pageId as Id<'pages'> | undefined,
-            sourcePage: l.sourcePage,
-            line: l.line,
-            quote: l.text,
-          })),
+          mentions: c.lines.map(toMention),
+        })),
+        links: parseLinks(reply, input.lines, found).map((l) => ({
+          a: l.a,
+          b: l.b,
+          how: l.how,
+          lines: l.lines.map(toMention),
         })),
       });
     } catch (error) {
       console.error(`[concepts] ${sessionId} failed:`, error);
-      await ctx.runMutation(internal.concepts.markReadFailed, { sessionId, queuedAt });
+      await ctx.runMutation(internal.conceptQueue.markReadFailed, { sessionId, queuedAt });
     }
   },
 });

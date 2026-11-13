@@ -5,6 +5,7 @@ import {
   matchKeys,
   nameKey,
   parseConcepts,
+  parseLinks,
   sourceLines,
   splitAbbreviation,
 } from '../convex/conceptText';
@@ -115,5 +116,48 @@ describe('matching wordings of one concept', () => {
       new Set(),
     );
     expect(found.map((c) => [c.name, c.aliases])).toEqual([['Long Term Memory', ['LTM']]]);
+  });
+});
+
+describe('parseLinks', () => {
+  const lines = classLines([
+    {
+      _id: 'p',
+      order: 0,
+      transcript: [
+        { text: 'H.M. → amnesia' },
+        { text: 'Figure 2' },
+        { text: 'hippocampus removed' },
+      ],
+    },
+  ]);
+  const reply = JSON.stringify({
+    concepts: [
+      { name: 'H.M.', kind: 'example', existing: null, aliases: [], lines: ['P1.1'] },
+      { name: 'Figure 2', kind: 'other', existing: null, aliases: [], lines: ['P1.2'] },
+      { name: 'Amnesia', kind: 'term', existing: null, aliases: [], lines: ['P1.1'] },
+      { name: 'Hippocampus', kind: 'term', existing: null, aliases: [], lines: ['P1.3'] },
+    ],
+    links: [
+      { a: 0, b: 2, how: 'H.M. is a case of amnesia', lines: ['P1.1'] },
+      { a: 2, b: 0, how: 'repeat of the pair', lines: ['P1.1'] },
+      { a: 0, b: 1, how: 'links to a dropped concept', lines: ['P1.2'] },
+      { a: 0, b: 3, how: 'no real lines', lines: ['P9.9'] },
+      { a: 3, b: 3, how: 'itself', lines: ['P1.3'] },
+    ],
+  });
+
+  it('maps Claude’s positions to the concepts that checked out and drops the rest', () => {
+    const concepts = parseConcepts(reply, lines, new Set());
+    expect(concepts.map((c) => c.name)).toEqual(['H.M.', 'Amnesia', 'Hippocampus']);
+    const links = parseLinks(reply, lines, concepts);
+    expect(links.map((l) => [l.a, l.b, l.how, l.lines.map((x) => x.ref)])).toEqual([
+      [0, 1, 'H.M. is a case of amnesia', ['P1.1']],
+    ]);
+  });
+
+  it('is empty when the reply has no links', () => {
+    const noLinks = '{"concepts":[]}';
+    expect(parseLinks(noLinks, lines, [])).toEqual([]);
   });
 });

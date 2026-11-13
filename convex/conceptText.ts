@@ -15,6 +15,8 @@ export type ConceptKind = (typeof CONCEPT_KINDS)[number];
 /** Caps that keep one read's output well inside its token budget. */
 const MAX_CONCEPTS = 40;
 const MAX_LINES_PER_CONCEPT = 8;
+const MAX_LINKS = 20;
+const MAX_LINES_PER_LINK = 3;
 /** Material sent per read (~20k tokens); a long reading's tail is left out. */
 const MAX_INPUT_CHARS = 80_000;
 
@@ -111,7 +113,7 @@ ${labelLines(opts.lines)}
 </${tag}>
 
 Reply with JSON only, no code fences:
-{"concepts":[{"name":"…","kind":"term|person|theory|example|date|other","existing":"C3 or null","aliases":["…"],"lines":["P1.2","P1.4"]}]}
+{"concepts":[{"name":"…","kind":"term|person|theory|example|date|other","existing":"C3 or null","aliases":["…"],"lines":["P1.2","P1.4"]}],"links":[{"a":0,"b":2,"how":"…","lines":["P1.4"]}]}
 
 Rules:
 - If a concept is the same idea as one already in the course, set existing to its label and put the new wording in aliases. The same idea includes: an abbreviation and its full form ("LTM", "long-term memory"), singular and plural, hyphenated or spaced ("long term memory"), shorthand ("neg. reinforcement"), and a name with its abbreviation in parentheses ("Long Term Memory (LTM)"). Only merge when it really is the same idea, not merely related: "memory" and "long-term memory" are two concepts.
@@ -119,7 +121,13 @@ Rules:
 - name (new concepts): the clearest full form these lines use, in their words, at most 6 words, without a parenthesized abbreviation (put that in aliases). Never invent a term the lines don't use.
 - aliases: other names or abbreviations these lines use for it (a few words each, never a whole line). Can be empty.
 - lines: labels of the lines that mention it, at most ${MAX_LINES_PER_CONCEPT}. Only labels from the list.
-- At most ${MAX_CONCEPTS} concepts; if there are more, leave out the least important.`;
+- At most ${MAX_CONCEPTS} concepts; if there are more, leave out the least important.
+
+Links: where these lines actually connect two of the concepts in your reply: one is a kind of, part of, example or case of, cause of, method for, or contrast to the other, or the student draws an arrow between them. Two concepts merely appearing in the same notes is not a link.
+- a, b: positions (0-based) of the two concepts in your concepts list.
+- how: the connection in plain words, at most 8 words, from what the lines say ("H.M. is a case of amnesia"). Never add facts the lines don't state.
+- lines: labels of the lines that show the connection, 1 to ${MAX_LINES_PER_LINK}.
+- At most ${MAX_LINKS} links, the clearest ones. Can be empty.`;
 };
 
 export interface ExtractedConcept {
@@ -129,6 +137,8 @@ export interface ExtractedConcept {
   existing: string | null;
   aliases: string[];
   lines: RefLine[];
+  /** Its position in Claude's list, which links refer to. */
+  index: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -136,6 +146,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((s): s is string => typeof s === 'string') : [];
+
+const replyJson = (reply: string): unknown => {
+  const fenced = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = (fenced ? fenced[1] : reply).trim();
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  if (start < 0 || end < start) throw new Error('Concept reply had no JSON');
+  return JSON.parse(body.slice(start, end + 1));
+};
 
 /**
  * Claude's reply → concepts. Anything that doesn't check out is dropped: line
@@ -147,18 +166,13 @@ export const parseConcepts = (
   lines: RefLine[],
   knownKeys: Set<string>,
 ): ExtractedConcept[] => {
-  const fenced = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = (fenced ? fenced[1] : reply).trim();
-  const start = body.indexOf('{');
-  const end = body.lastIndexOf('}');
-  if (start < 0 || end < start) throw new Error('Concept reply had no JSON');
-  const parsed: unknown = JSON.parse(body.slice(start, end + 1));
+  const parsed = replyJson(reply);
   if (!isRecord(parsed) || !Array.isArray(parsed.concepts)) {
     throw new Error('Concept reply missing concepts');
   }
   const byRef = new Map(lines.map((l) => [l.ref, l]));
   const out: ExtractedConcept[] = [];
-  for (const item of parsed.concepts.slice(0, MAX_CONCEPTS)) {
+  for (const [index, item] of parsed.concepts.slice(0, MAX_CONCEPTS).entries()) {
     if (!isRecord(item) || typeof item.name !== 'string') continue;
     const { name, abbreviation } = splitAbbreviation(item.name.trim().slice(0, 80));
     if (isNoise(name)) continue;
@@ -173,7 +187,50 @@ export const parseConcepts = (
     const aliases = [...(abbreviation ? [abbreviation] : []), ...strings(item.aliases)]
       .map((a) => a.trim().slice(0, 80))
       .filter((a) => a && a.toLowerCase() !== name.toLowerCase());
-    out.push({ name, kind, existing, aliases, lines: found });
+    out.push({ name, kind, existing, aliases, lines: found, index });
+  }
+  return out;
+};
+
+export interface ExtractedLink {
+  /** Positions in the parsed concepts (not Claude's list). */
+  a: number;
+  b: number;
+  how: string;
+  lines: RefLine[];
+}
+
+/**
+ * The reply's links between its concepts. Dropped: links to concepts that
+ * didn't check out, a concept linked to itself, repeats of a pair, and links
+ * with no real line labels. A reply with no links is fine.
+ */
+export const parseLinks = (
+  reply: string,
+  lines: RefLine[],
+  concepts: ExtractedConcept[],
+): ExtractedLink[] => {
+  const parsed = replyJson(reply);
+  if (!isRecord(parsed) || !Array.isArray(parsed.links)) return [];
+  const position = new Map(concepts.map((c, i) => [c.index, i]));
+  const byRef = new Map(lines.map((l) => [l.ref, l]));
+  const seen = new Set<string>();
+  const out: ExtractedLink[] = [];
+  for (const item of parsed.links) {
+    if (out.length >= MAX_LINKS) break;
+    if (!isRecord(item) || typeof item.how !== 'string') continue;
+    const a = typeof item.a === 'number' ? position.get(item.a) : undefined;
+    const b = typeof item.b === 'number' ? position.get(item.b) : undefined;
+    if (a === undefined || b === undefined || a === b) continue;
+    const pair = a < b ? `${a}-${b}` : `${b}-${a}`;
+    if (seen.has(pair)) continue;
+    const found = [...new Set(strings(item.lines))]
+      .slice(0, MAX_LINES_PER_LINK)
+      .flatMap((ref) => byRef.get(ref.replace(/[[\]]/g, '').trim()) ?? []);
+    const how = item.how.trim().slice(0, 120);
+    if (!how || found.length === 0) continue;
+    seen.add(pair);
+    out.push({ a, b, how, lines: found });
   }
   return out;
 };

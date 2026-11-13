@@ -7,6 +7,7 @@ import { v } from 'convex/values';
 import { internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import { type MutationCtx, internalMutation } from './_generated/server';
+import { afterSessionRead } from './themes';
 
 /** Wait before reading, so pages still finishing in the same batch join one read. */
 const READ_DELAY_MS = 20_000;
@@ -115,3 +116,16 @@ export const queueConceptsWhenPagesRead = async (
     .first();
   if (!pending) await queueConcepts(ctx, sessionId);
 };
+
+/** A session's read failed (its concept or its whisker step). */
+export const markReadFailed = internalMutation({
+  args: { sessionId: v.id('sessions'), queuedAt: v.number() },
+  handler: async (ctx, { sessionId, queuedAt }): Promise<void> => {
+    const session = await ctx.db.get(sessionId);
+    if (session?.conceptsQueuedAt === queuedAt) {
+      await ctx.db.patch(sessionId, { conceptsStatus: 'failed' });
+      if (session.courseId) await afterSessionRead(ctx, session.courseId);
+    }
+    if (session?.courseId) await releaseRead(ctx, session.courseId, sessionId, queuedAt);
+  },
+});

@@ -27,6 +27,8 @@ export default defineSchema({
     // sessions are read. themesQueuedAt identifies the latest queued grouping.
     themesStatus: v.optional(v.union(v.literal('pending'), v.literal('done'), v.literal('failed'))),
     themesQueuedAt: v.optional(v.number()),
+    // The latest queued arc refresh (convex/arcs.ts); an older one is ignored.
+    arcsQueuedAt: v.optional(v.number()),
   }).index('by_user', ['userId']),
 
   // Study sessions: one class meeting (page photos), or an older typed/uploaded session
@@ -126,9 +128,53 @@ export default defineSchema({
     themeId: v.optional(v.id('themes')),
     // The student moved it there: regrouping leaves it alone.
     themePinned: v.optional(v.boolean()),
+    // A thread's arc: one line by Claude on how the idea moved across the
+    // course, citing the sessions it draws on. signature = the sessions it was
+    // written from, so it's rewritten only when the thread changes.
+    arc: v.optional(
+      v.object({
+        text: v.string(),
+        cites: v.array(
+          v.object({
+            sessionId: v.id('sessions'),
+            pageId: v.optional(v.id('pages')),
+            sourcePage: v.optional(v.number()),
+          }),
+        ),
+        signature: v.string(),
+      }),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('by_course', ['courseId']),
+
+  // An edge: two of a course's concepts that the notes actually connect (one is
+  // a case of, part of, cause of… the other), found while reading a session,
+  // with the lines that show it. One row per pair; pairKey (the two names'
+  // match keys) keeps a dismissal across re-reads that recreate the concepts.
+  conceptEdges: defineTable({
+    userId: v.string(),
+    courseId: v.id('courses'),
+    aId: v.id('concepts'),
+    bId: v.id('concepts'),
+    pairKey: v.string(),
+    // How they connect, in a few words, from the notes ("H.M. is a case of amnesia").
+    how: v.string(),
+    evidence: v.array(
+      v.object({
+        sessionId: v.id('sessions'),
+        pageId: v.optional(v.id('pages')),
+        sourcePage: v.optional(v.number()),
+        line: v.number(),
+        quote: v.string(),
+      }),
+    ),
+    dismissed: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_course', ['courseId'])
+    .index('by_course_pair', ['courseId', 'pairKey']),
 
   // Themes: the handful of big topics a course's concepts group into (Memory,
   // Perception…), found by Claude; at most one level of sub-themes. A Claude

@@ -77,6 +77,11 @@ export const remove = mutation({
       .withIndex('by_course', (q) => q.eq('courseId', id))
       .collect();
     for (const theme of themes) await ctx.db.delete(theme._id);
+    const edges = await ctx.db
+      .query('conceptEdges')
+      .withIndex('by_course', (q) => q.eq('courseId', id))
+      .collect();
+    for (const edge of edges) await ctx.db.delete(edge._id);
     await ctx.db.delete(id);
   },
 });
